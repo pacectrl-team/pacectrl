@@ -1,0 +1,1 @@
+folder will be used for the embeddable script source + build output. This is where the widget lives. Default design. Operator can then edit in the portal the settings (thresholds) and their own branding to it, like colors and font.
