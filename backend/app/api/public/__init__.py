@@ -1,0 +1,1 @@
+# Here in this folder would the public API endpoints be defined in the future.
