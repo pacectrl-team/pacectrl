@@ -254,3 +254,4 @@ dist
 .Trashes
 ehthumbs.db
 Thumbs.db
+backend/test.db
