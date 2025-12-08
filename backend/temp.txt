@@ -1,1 +1,0 @@
-folder will be used for FastAPI. Will be split into public (the one used by the widget) and not so public, used by operator backend and the portal
