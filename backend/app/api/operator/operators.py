@@ -61,6 +61,26 @@ def generate_widget_key(operator_id: int, db: Session = Depends(get_db)):
     return {"public_key": new_key}
 
 
+@router.post("/{operator_id}/delete-widget-key", response_model=dict)
+def delete_widget_key(operator_id: int, db: Session = Depends(get_db)):
+    """Delete an existing public key for widget embedding."""
+
+    db_operator = db.query(Operator).filter(Operator.id == operator_id).first()
+    if not db_operator:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
+    
+    if db_operator.public_key is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No widget key to delete")
+    
+    # Delete the public key
+    db_operator.public_key = None
+
+    # Save changes
+    db.commit()
+
+    return {"detail": "Widget key deleted"}
+
+
 @router.post("/{operator_id}/generate-webhook-secret", response_model=dict)
 def generate_webhook_secret(operator_id: int, db: Session = Depends(get_db)):
     """Generate a new secure webhook secret. This will be used for authentication against the webhook and API."""
@@ -79,4 +99,24 @@ def generate_webhook_secret(operator_id: int, db: Session = Depends(get_db)):
     db.refresh(db_operator)
 
     return {"webhook_secret": new_key}
+
+
+@router.post("/{operator_id}/delete-webhook-secret", response_model=dict)
+def delete_webhook_secret(operator_id: int, db: Session = Depends(get_db)):
+    """Delete an existing webhook secret. Can be done in case it has been leaked. This will invalidate all existing webhooks."""
+
+    db_operator = db.query(Operator).filter(Operator.id == operator_id).first()
+    if not db_operator:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
+    
+    if db_operator.webhook_secret is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No webhook secret to delete")
+    
+    # Delete the webhook secret
+    db_operator.webhook_secret = None
+
+    # Save changes
+    db.commit()
+
+    return {"detail": "Webhook secret deleted"}
 
