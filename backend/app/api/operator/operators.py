@@ -61,7 +61,7 @@ def generate_widget_key(operator_id: int, db: Session = Depends(get_db)):
     return {"public_key": new_key}
 
 
-@router.post("/{operator_id}/delete-widget-key", response_model=dict)
+@router.delete("/{operator_id}/widget-key", response_model=dict)
 def delete_widget_key(operator_id: int, db: Session = Depends(get_db)):
     """Delete an existing public key for widget embedding."""
 
@@ -101,7 +101,7 @@ def generate_webhook_secret(operator_id: int, db: Session = Depends(get_db)):
     return {"webhook_secret": new_key}
 
 
-@router.post("/{operator_id}/delete-webhook-secret", response_model=dict)
+@router.delete("/{operator_id}/webhook-secret", response_model=dict)
 def delete_webhook_secret(operator_id: int, db: Session = Depends(get_db)):
     """Delete an existing webhook secret. Can be done in case it has been leaked. This will invalidate all existing webhooks."""
 
