@@ -13,7 +13,7 @@
   * http://127.0.0.1:8000/docs
 
 * When there's a new version of the DB, run this command (In backend folder):
-  * alembic revision --autogenerate -m "some version comment here"
+  * alembic revision --autogenerate -m "some version comment here, like 'added operator model'"
 * Creates the new tables
   * alembic upgrade head
 
