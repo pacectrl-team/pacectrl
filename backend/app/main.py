@@ -11,8 +11,8 @@ app = FastAPI(title="PaceCtrl API")
 # Add API logging middleware
 app.add_middleware(ApiLoggingMiddleware)
 
-# Create tables (development convenience; migrations recommended for production)
-Base.metadata.create_all(bind=engine)
+# Tables are created via Alembic migrations in production
+# Base.metadata.create_all(bind=engine)  # Commented out for production
 
 # Include the operator router under operator API prefix
 app.include_router(operators_router, prefix="/api/v1/operator")
