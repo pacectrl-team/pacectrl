@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 
 from app.core.database import Base, engine
+from app.core.middleware import ApiLoggingMiddleware
 from app.api.operator.operators import router as operators_router
 
 
 # Initialize FastAPI application
 app = FastAPI(title="PaceCtrl API")
+
+# Add API logging middleware
+app.add_middleware(ApiLoggingMiddleware)
 
 # Create tables (development convenience; migrations recommended for production)
 Base.metadata.create_all(bind=engine)
