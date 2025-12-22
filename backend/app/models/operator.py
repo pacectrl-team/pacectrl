@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, Integer, String, func
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -13,3 +14,6 @@ class Operator(Base):
     public_key = Column(String, unique=True, nullable=True)
     webhook_secret = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationship to users, one-to-many
+    users = relationship("User", back_populates="operator")
