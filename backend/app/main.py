@@ -2,8 +2,9 @@ from fastapi import FastAPI
 
 from app.core.database import Base, engine
 from app.core.middleware import ApiLoggingMiddleware
+from app.api.operator.auth import router as auth_router
 from app.api.operator.operators import router as operators_router
-from app.api.operator.users import router as users_router;
+from app.api.operator.users import router as users_router
 
 
 # Initialize FastAPI application
@@ -16,6 +17,7 @@ app.add_middleware(ApiLoggingMiddleware)
 # Base.metadata.create_all(bind=engine)  # Commented out for production
 
 # Add the various routes available
+app.include_router(auth_router, prefix="/api/v1/operator")
 app.include_router(operators_router, prefix="/api/v1/operator")
 app.include_router(users_router, prefix="/api/v1/operator")
 
