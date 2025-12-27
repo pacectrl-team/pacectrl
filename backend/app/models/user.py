@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
-import bcrypt 
 
 class User(Base):
     """
@@ -19,12 +19,3 @@ class User(Base):
 
     # Relationship back to operator (optional, for easy queries)
     operator = relationship("Operator", back_populates="users")
-
-    @staticmethod #Add functions here as needed.
-    def hash_password(password: str) -> str:
-        """Hash a plain-text password using bcrypt."""
-        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-    def verify_password(self, password: str) -> bool:
-        """Verify a plain-text password against the stored hash."""
-        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
