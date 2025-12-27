@@ -18,7 +18,7 @@ class ApiLog(Base):
     status_code = Column(Integer, nullable=False)
     response_ms = Column(Integer, nullable=False)
     operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
-    user_id = Column(Integer, nullable=True)  # FK to users.id when implemented
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     voyage_id = Column(Integer, nullable=True)  # FK to voyages.id when implemented
     ip_hash = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
