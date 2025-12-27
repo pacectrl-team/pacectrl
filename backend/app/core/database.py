@@ -4,12 +4,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Create database engine with URL from settings
-# For SQLite, add check_same_thread for thread safety
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {}
-)
+# Create database engine with URL from settings (PostgreSQL by default)
+engine = create_engine(settings.database_url, pool_pre_ping=True)
 
 # Create session factory for database connections
 SessionLocal = sessionmaker(

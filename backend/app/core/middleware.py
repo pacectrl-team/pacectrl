@@ -13,7 +13,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log all API requests to the api_logs table."""
 
     async def dispatch(self, request: Request, call_next):
-        # Generate unique request ID
+        # Generate unique request ID (UUID stored in DB)
         request_id = uuid.uuid4()
 
         # Start timing

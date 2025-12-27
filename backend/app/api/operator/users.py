@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.core import security
 from app.core.database import get_db
-from app.models.user import User
 from app.models.operator import Operator  # For FK validation
+from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate, User as UserSchema
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -25,7 +26,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
     
     # Hash password and create user
-    hashed_password = User.hash_password(user.password)
+    hashed_password = security.hash_password(user.password)
     db_user = User(
         username=user.username,
         password_hash=hashed_password,
@@ -87,7 +88,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         db_user.role = user_update.role
 
     if user_update.password:
-        db_user.password_hash = User.hash_password(user_update.password)
+        db_user.password_hash = security.hash_password(user_update.password)
     
     db.commit()
     db.refresh(db_user)
