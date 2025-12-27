@@ -11,7 +11,7 @@ class ApiLog(Base):
     __tablename__ = "api_logs"
 
     api_log_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    request_id = Column(String, nullable=False, default=lambda: str(uuid.uuid4())) # UUID as string
+    request_id = Column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     method = Column(String, nullable=False)
     path = Column(String, nullable=False)
