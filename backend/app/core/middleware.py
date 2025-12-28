@@ -5,6 +5,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 
+from app.core import security
 from app.core.database import SessionLocal
 from app.models.api_log import ApiLog
 
@@ -18,6 +19,31 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
 
         # Start timing
         start_time = time.time()
+
+        # Attempt to extract user/operator from JWT. If invalid/missing, log with null values.
+        operator_id = None
+        user_id = None
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1] # Get the token part
+            try:
+                payload = security.decode_access_token(token)
+                # sub is stored as string; cast to int if possible
+                raw_sub = payload.get("sub")
+                if raw_sub is not None:
+                    user_id = int(raw_sub)
+                else:
+                    user_id = None
+                
+                raw_op = payload.get("operator_id")
+                if raw_op is not None:
+                    operator_id = int(raw_op)
+                else:
+                    operator_id = None
+
+            except Exception:
+                # Ignore token errors for logging; do not block the request
+                pass
 
         # Call the next middleware/route handler
         response: Response = await call_next(request)
@@ -34,9 +60,6 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else None
         ip_hash = hashlib.sha256(client_ip.encode()).hexdigest() if client_ip else None
 
-        # For now, operator_id is None; will be set later with auth
-        operator_id = None
-
         # Log to database
         db: Session = SessionLocal()
         try:
@@ -47,6 +70,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 status_code=status_code,
                 response_ms=response_ms,
                 operator_id=operator_id,
+                user_id=user_id,
                 ip_hash=ip_hash,
                 user_agent=user_agent,
             )
