@@ -5,6 +5,7 @@ from app.core.middleware import ApiLoggingMiddleware
 from app.api.operator.auth import router as auth_router
 from app.api.operator.operators import router as operators_router
 from app.api.operator.users import router as users_router
+from app.api.operator.voyages import router as voyages_router
 
 
 # Initialize FastAPI application
@@ -20,6 +21,7 @@ app.add_middleware(ApiLoggingMiddleware)
 app.include_router(auth_router, prefix="/api/v1/operator")
 app.include_router(operators_router, prefix="/api/v1/operator")
 app.include_router(users_router, prefix="/api/v1/operator")
+app.include_router(voyages_router, prefix="/api/v1/operator")
 
 @app.get("/health")
 def read_health():
