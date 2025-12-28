@@ -17,3 +17,5 @@ class Operator(Base):
 
     # Relationship to users, one-to-many
     users = relationship("User", back_populates="operator")
+    # Relationship to voyages, one-to-many
+    voyages = relationship("Voyage", back_populates="operator")
