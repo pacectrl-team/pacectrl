@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, JSON, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -21,7 +21,11 @@ class Voyage(Base):
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
     # Unique constraint on (operator_id, external_trip_id) to ensure uniqueness per operator
-    __table_args__ = (UniqueConstraint('operator_id', 'external_trip_id', name='uq_operator_external_trip'),)
+    __table_args__ = (
+        UniqueConstraint("operator_id", "external_trip_id", name="uq_operator_external_trip"),
+        CheckConstraint("status IN ('planned','completed','cancelled')", name="ck_voyage_status"),
+    )
 
-    # Relationship back to operator (optional, for easy queries)
     operator = relationship("Operator", back_populates="voyages")
+
+    voyage_speed_estimates = relationship("VoyageSpeedEstimate", back_populates="voyage")

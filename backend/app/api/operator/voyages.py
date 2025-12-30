@@ -22,7 +22,10 @@ def create_voyage(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new voyage."""
-
+    # Check that the voyage is being created for the current user's operator
+    if voyage.operator_id != current_user.operator_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create voyages for another operator")
+    
     # Check uniqueness of external_trip_id per operator
     if voyage.external_trip_id:
         existing = db.query(Voyage).filter(
