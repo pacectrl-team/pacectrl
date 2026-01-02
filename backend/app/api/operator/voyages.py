@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.user import User
 from app.models.voyage import Voyage
+from app.models.widget_config import WidgetConfig
 from app.schemas.voyage import VoyageCreate, VoyageUpdate, Voyage as VoyageSchema
 
 router = APIRouter(
@@ -35,10 +36,17 @@ def create_voyage(
         if existing:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="External trip ID already exists for this operator")
 
+    # Validate widget config belongs to the same operator if provided
+    if voyage.widget_config_id is not None:
+        config = db.query(WidgetConfig).filter(WidgetConfig.id == voyage.widget_config_id).first()
+        if not config or config.operator_id != current_user.operator_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid widget config for this operator")
+
     # Create voyage instance
     db_voyage = Voyage(
         operator_id=voyage.operator_id,
         external_trip_id=voyage.external_trip_id,
+        widget_config_id=voyage.widget_config_id,
         departure_port=voyage.departure_port,
         arrival_port=voyage.arrival_port,
         departure_datetime=voyage.departure_datetime,
@@ -112,6 +120,12 @@ def update_voyage(
         db_voyage.departure_port = voyage_update.departure_port
     if voyage_update.arrival_port is not None:
         db_voyage.arrival_port = voyage_update.arrival_port
+    if "widget_config_id" in voyage_update.model_fields_set:
+        if voyage_update.widget_config_id is not None:
+            config = db.query(WidgetConfig).filter(WidgetConfig.id == voyage_update.widget_config_id).first()
+            if not config or config.operator_id != current_user.operator_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid widget config for this operator")
+        db_voyage.widget_config_id = voyage_update.widget_config_id
     if voyage_update.departure_datetime is not None:
         db_voyage.departure_datetime = voyage_update.departure_datetime
     if voyage_update.arrival_datetime is not None:

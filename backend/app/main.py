@@ -7,6 +7,7 @@ from app.api.operator.operators import router as operators_router
 from app.api.operator.users import router as users_router
 from app.api.operator.voyages import router as voyages_router
 from app.api.operator.voyage_speed_estimates import router as voyage_speed_estimates_router
+from app.api.operator.widget_configs import router as widget_configs_router
 
 
 # Initialize FastAPI application
@@ -24,6 +25,7 @@ app.include_router(operators_router, prefix="/api/v1/operator")
 app.include_router(users_router, prefix="/api/v1/operator")
 app.include_router(voyages_router, prefix="/api/v1/operator")
 app.include_router(voyage_speed_estimates_router, prefix="/api/v1/operator")
+app.include_router(widget_configs_router, prefix="/api/v1/operator")
 
 @app.get("/health")
 def read_health():
