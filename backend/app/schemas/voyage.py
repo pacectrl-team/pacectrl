@@ -7,6 +7,7 @@ class VoyageBase(BaseModel):
     """Base schema for voyage data."""
     operator_id: int
     external_trip_id: Optional[str] = None
+    widget_config_id: Optional[int] = None
     departure_port: Optional[str] = None
     arrival_port: Optional[str] = None
     departure_datetime: datetime
@@ -23,6 +24,7 @@ class VoyageCreate(VoyageBase):
 class VoyageUpdate(BaseModel):
     """Schema for updating a voyage (partial)."""
     external_trip_id: Optional[str] = None
+    widget_config_id: Optional[int] = None
     departure_port: Optional[str] = None
     arrival_port: Optional[str] = None
     departure_datetime: Optional[datetime] = None
@@ -35,6 +37,7 @@ class Voyage(VoyageBase):
     """Schema for voyage responses (includes ID and timestamps)."""
     id: int
     created_at: datetime
+    widget_config_id: Optional[int] = None
 
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility
