@@ -32,9 +32,9 @@ def create_access_token(
     )
     payload = {
         # sub must be a string per JWT spec to satisfy PyJWT validation
-        "sub": str(subject),
+        "sub": str(subject), # user ID as string
         "operator_id": operator_id,
-        "role": role,
+        "role": role, # user role
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.algorithm)
