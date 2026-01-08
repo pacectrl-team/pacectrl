@@ -9,6 +9,7 @@ from app.api.operator.voyages import router as voyages_router
 from app.api.operator.voyage_speed_estimates import router as voyage_speed_estimates_router
 from app.api.operator.widget_configs import router as widget_configs_router
 from app.api.operator.choice_intents import router as choice_intents_router
+from app.api.operator.confirmed_choices import router as confirmed_choices_router
 from app.api.public.widget import router as public_widget_router
 from app.api.public.choice_intents import router as public_choice_intents_router
 
@@ -30,6 +31,7 @@ app.include_router(voyages_router, prefix="/api/v1/operator")
 app.include_router(voyage_speed_estimates_router, prefix="/api/v1/operator")
 app.include_router(widget_configs_router, prefix="/api/v1/operator")
 app.include_router(choice_intents_router, prefix="/api/v1/operator")
+app.include_router(confirmed_choices_router, prefix="/api/v1/operator")
 app.include_router(public_widget_router, prefix="/api/v1/public")
 app.include_router(public_choice_intents_router, prefix="/api/v1/public")
 
