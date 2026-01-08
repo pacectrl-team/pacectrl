@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -27,6 +28,18 @@ def create_confirmed_choice(
     if not intent:
         raise HTTPException(status_code=404, detail="Choice intent not found")
 
+    # Check if a confirmed choice already exists for this voyage + booking (do this early for performance)
+    existing = db.query(ConfirmedChoice).filter(
+        ConfirmedChoice.voyage_id == intent.voyage_id,
+        ConfirmedChoice.booking_id == payload.booking_id
+    ).first()
+    if existing:
+        return existing
+
+    # Check if the intent has expired
+    if datetime.now(timezone.utc) > intent.expires_at:
+        raise HTTPException(status_code=400, detail="Choice intent has expired")
+
     # Verify the voyage belongs to the user's operator
     voyage = db.query(Voyage).filter(
         Voyage.id == intent.voyage_id,
@@ -34,14 +47,6 @@ def create_confirmed_choice(
     ).first()
     if not voyage:
         raise HTTPException(status_code=404, detail="Voyage not found or access denied")
-
-    # Check if a confirmed choice already exists for this voyage + booking
-    existing = db.query(ConfirmedChoice).filter(
-        ConfirmedChoice.voyage_id == intent.voyage_id,
-        ConfirmedChoice.booking_id == payload.booking_id
-    ).first()
-    if existing:
-        return existing
 
     # Create the confirmed choice
     db_choice = ConfirmedChoice(
