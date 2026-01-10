@@ -1,9 +1,6 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "pip install --upgrade pip && pip install -r backend/requirements.txt && npm install --prefix widget && npm run build --prefix widget"
-  },
-  "deploy": {
-    "startCommand": "sh -c \"cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT\""
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "../Dockerfile"
   }
 }
