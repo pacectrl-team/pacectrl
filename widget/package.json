@@ -1,0 +1,22 @@
+{
+  "name": "pacectrl-widget",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PaceCtrl embeddable widget",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "keywords": [
+    "pacectrl",
+    "widget",
+    "umd"
+  ],
+  "author": "PaceCtrl",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.0.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  }
+}

@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.core.middleware import ApiLoggingMiddleware
+from app.core.config import settings
 from app.api.operator.auth import router as auth_router
 from app.api.operator.operators import router as operators_router
 from app.api.operator.users import router as users_router
@@ -12,6 +14,7 @@ from app.api.operator.choice_intents import router as choice_intents_router
 from app.api.operator.confirmed_choices import router as confirmed_choices_router
 from app.api.public.widget import router as public_widget_router
 from app.api.public.choice_intents import router as public_choice_intents_router
+from app.api.public.widget_assets import router as widget_assets_router
 
 
 # Initialize FastAPI application
@@ -19,6 +22,17 @@ app = FastAPI(title="PaceCtrl API")
 
 # Add API logging middleware
 app.add_middleware(ApiLoggingMiddleware)
+
+# Configure CORS (allow public widget interactions)
+cors_origins = settings.get_cors_origins()
+allow_credentials = False if cors_origins == ["*"] else True
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Tables are created via Alembic migrations in production
 # Base.metadata.create_all(bind=engine)  # Commented out for production
@@ -34,6 +48,7 @@ app.include_router(choice_intents_router, prefix="/api/v1/operator")
 app.include_router(confirmed_choices_router, prefix="/api/v1/operator")
 app.include_router(public_widget_router, prefix="/api/v1/public")
 app.include_router(public_choice_intents_router, prefix="/api/v1/public")
+app.include_router(widget_assets_router)
 
 @app.get("/health")
 def read_health():

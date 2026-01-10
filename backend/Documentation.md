@@ -24,3 +24,8 @@
 * For Railway deployment:
   * Set DATABASE_URL in Railway service variables to Postgres URL.
   * Redeploy; migrations run automatically via railway.json startCommand - so no need to manually update the tables there.
+
+* Widget delivery env vars:
+  * `PUBLIC_BASE_URL` - optional, overrides origin used when generating widget links.
+  * `WIDGET_CACHE_SECONDS` - cache lifetime for `/widget.js` responses (default 300 seconds).
+  * `CORS_ALLOW_ORIGINS` - comma-separated list of allowed origins (defaults to `*`).
