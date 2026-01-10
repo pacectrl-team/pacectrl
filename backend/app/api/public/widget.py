@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -7,6 +7,7 @@ from app.models.voyage import Voyage
 from app.models.widget_config import WidgetConfig
 from app.models.voyage_speed_estimate import VoyageSpeedEstimate
 from app.schemas.public_widget import PublicWidgetConfigOut
+from app.core.config import settings
 
 router = APIRouter(
     prefix="/widget",
@@ -14,8 +15,15 @@ router = APIRouter(
 )
 
 
+def _resolve_public_base_url(request: Request) -> str:
+    if settings.public_base_url:
+        return settings.public_base_url.rstrip("/")
+    return str(request.base_url).rstrip("/")
+
+
 @router.get("/config", response_model=PublicWidgetConfigOut)
 def get_config(
+    request: Request,
     external_trip_id: Optional[str] = Query(None, description="External trip ID to fetch config for"),
     voyage_id: Optional[int] = Query(None, description="Voyage ID to fetch config for"),
     db: Session = Depends(get_db),
@@ -81,6 +89,8 @@ def get_config(
     }
 
     # response construction
+    public_base = _resolve_public_base_url(request)
+
     response = {
         "id": voyage.id,
         "name": widget_config.name if widget_config else "Default",
@@ -92,6 +102,7 @@ def get_config(
         "derived": derived,
         "theme": widget_config.config.get("theme", {}) if widget_config else {},
         "anchors": anchors,
+        "widget_script_url": f"{public_base}/widget.js" if public_base else None,
     }
 
     return response

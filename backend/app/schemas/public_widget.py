@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -9,21 +9,6 @@ class AnchorOut(BaseModel):
     speed_knots: float
     expected_emissions_kg_co2: float
     expected_arrival_delay_minutes: int
-
-
-class WidgetThemeOut(BaseModel):
-    """Theme settings for the public widget."""
-    slow_color: str
-    fast_color: str
-    font_color: str
-    background_color: str
-    border_color: str
-    border_width: int
-    font_size: int
-    font_family: str
-    rounding_px: int
-    slider_dot_color: str
-    # more fields can be added as needed
 
 
 class PublicWidgetConfigOut(BaseModel):
@@ -37,8 +22,12 @@ class PublicWidgetConfigOut(BaseModel):
     status: str
     #derived is computed server-side just to help the widget. holds min/max speeds etc.
     derived: Dict[str, float]
-    theme: WidgetThemeOut
+    theme: Dict[str, Any]
     anchors: Dict[str, AnchorOut]  #key by profile: "eco", "standard", "fast"
+    widget_script_url: Optional[str] = Field(
+        default=None,
+        description="Absolute URL to the PaceCtrl widget bundle (widget.js).",
+    )
 
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility
