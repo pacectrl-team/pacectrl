@@ -6,7 +6,7 @@ type AnchorProfile = {
 };
 
 type WidgetAnchors = Record<string, AnchorProfile> & {
-  eco: AnchorProfile;
+  slow: AnchorProfile;
   standard: AnchorProfile;
   fast: AnchorProfile;
 };
@@ -456,9 +456,9 @@ function lerp(start: number, end: number, ratio: number): number {
 
 function interpolateMetrics(config: WidgetConfig, sliderValue: number): InterpolatedMetrics {
   const normalized = clamp(sliderValue, 0, 1);
-  const { eco, standard, fast } = config.anchors;
+  const { slow, standard, fast } = config.anchors;
 
-  let start = eco;
+  let start = slow;
   let end = standard;
   let ratio = normalized / 0.5;
 
@@ -651,7 +651,7 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
 
     const sliderScale = document.createElement("div");
     sliderScale.className = "pcw-slider-scale";
-    sliderScale.innerHTML = "<span>Eco</span><span>Standard</span><span>Fast</span>";
+    sliderScale.innerHTML = "<span>Slow</span><span>Standard</span><span>Fast</span>";
     sliderSection.appendChild(sliderScale);
 
     const metrics = document.createElement("div");
