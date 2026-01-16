@@ -2,7 +2,7 @@ type AnchorProfile = {
   profile: string;
   speed_knots: number;
   expected_emissions_kg_co2: number;
-  expected_arrival_delay_minutes: number;
+  expected_arrival_delta_minutes: number;
 };
 
 type WidgetAnchors = Record<string, AnchorProfile> & {
@@ -473,8 +473,8 @@ function interpolateMetrics(config: WidgetConfig, sliderValue: number): Interpol
   const speed = lerp(start.speed_knots, end.speed_knots, ratio);
   const emissions = lerp(start.expected_emissions_kg_co2, end.expected_emissions_kg_co2, ratio);
   const delayMinutes = lerp(
-    start.expected_arrival_delay_minutes,
-    end.expected_arrival_delay_minutes,
+    start.expected_arrival_delta_minutes,
+    end.expected_arrival_delta_minutes,
     ratio
   );
 
