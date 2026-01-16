@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
-from sqlalchemy.orm import Session
+from datetime import datetime
 from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.voyage import Voyage
@@ -66,6 +68,10 @@ def get_config(
             detail="Voyage is missing route or ship linkage required for speed estimates",
         )
 
+    route = voyage.route
+    if route is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found for voyage")
+
     speed_estimates = (
         db.query(SpeedToEmissionsEstimate)
         .filter(
@@ -108,13 +114,20 @@ def get_config(
     # response construction
     public_base = _resolve_public_base_url(request)
 
+    default_departure_datetime = None
+    default_arrival_datetime = None
+    if voyage.departure_date and route.departure_time:
+        default_departure_datetime = datetime.combine(voyage.departure_date, route.departure_time)
+    if voyage.arrival_date and route.arrival_time:
+        default_arrival_datetime = datetime.combine(voyage.arrival_date, route.arrival_time)
+
     response = {
         "id": voyage.id,
         "name": widget_config.name if widget_config else "Default",
         "description": widget_config.description if widget_config else None,
         "default_speed_percentage": widget_config.config.get("default_speed_percentage", 50) if widget_config else 50,
-        "default_departure_datetime": voyage.departure_datetime,
-        "default_arrival_datetime": voyage.arrival_datetime,
+        "default_departure_datetime": default_departure_datetime,
+        "default_arrival_datetime": default_arrival_datetime,
         "status": voyage.status,
         "derived": derived,
         "theme": widget_config.config.get("theme", {}) if widget_config else {},
