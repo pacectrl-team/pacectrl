@@ -4,11 +4,12 @@ from datetime import datetime
 
 
 class AnchorOut(BaseModel):
-    """Three anchor points for the public widget. Each trip has three points, eco, standard and fast"""
+    """Anchor point exposed to the public widget for a given profile."""
+
     profile: str
     speed_knots: float
     expected_emissions_kg_co2: float
-    expected_arrival_delay_minutes: int
+    expected_arrival_delta_minutes: int
 
 
 class PublicWidgetConfigOut(BaseModel):
@@ -23,7 +24,7 @@ class PublicWidgetConfigOut(BaseModel):
     #derived is computed server-side just to help the widget. holds min/max speeds etc.
     derived: Dict[str, float]
     theme: Dict[str, Any]
-    anchors: Dict[str, AnchorOut]  #key by profile: "eco", "standard", "fast"
+    anchors: Dict[str, AnchorOut]  # key by profile: "slow", "standard", "fast"
     widget_script_url: Optional[str] = Field(
         default=None,
         description="Absolute URL to the PaceCtrl widget bundle (widget.js).",

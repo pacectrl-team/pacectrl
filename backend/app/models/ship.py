@@ -20,3 +20,5 @@ class Ship(Base):
     )
 
     operator = relationship("Operator", back_populates="ships")
+    voyages = relationship("Voyage", back_populates="ship")
+    speed_estimates = relationship("SpeedToEmissionsEstimate", back_populates="ship", cascade="all, delete-orphan")

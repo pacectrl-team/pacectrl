@@ -25,3 +25,5 @@ class Route(Base):
     )
 
     operator = relationship("Operator", back_populates="routes")
+    voyages = relationship("Voyage", back_populates="route")
+    speed_estimates = relationship("SpeedToEmissionsEstimate", back_populates="route", cascade="all, delete-orphan")
