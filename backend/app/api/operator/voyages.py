@@ -7,6 +7,8 @@ from app.core.deps import get_current_user, require_admin
 from app.models.user import User
 from app.models.voyage import Voyage
 from app.models.widget_config import WidgetConfig
+from app.models.route import Route
+from app.models.ship import Ship
 from app.schemas.voyage import VoyageCreate, VoyageUpdate, Voyage as VoyageSchema
 
 router = APIRouter(
@@ -42,6 +44,20 @@ def create_voyage(
         if not config or config.operator_id != current_user.operator_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid widget config for this operator")
 
+    if voyage.route_id is not None:
+        db_route = db.query(Route).filter(Route.id == voyage.route_id).first()
+        if not db_route:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+        if db_route.operator_id != current_user.operator_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Route belongs to another operator")
+
+    if voyage.ship_id is not None:
+        db_ship = db.query(Ship).filter(Ship.id == voyage.ship_id).first()
+        if not db_ship:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ship not found")
+        if db_ship.operator_id != current_user.operator_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ship belongs to another operator")
+
     # Create voyage instance
     db_voyage = Voyage(
         operator_id=voyage.operator_id,
@@ -53,6 +69,8 @@ def create_voyage(
         arrival_datetime=voyage.arrival_datetime,
         route_geometry=voyage.route_geometry,
         status=voyage.status,
+        route_id=voyage.route_id,
+        ship_id=voyage.ship_id,
     )
     db.add(db_voyage)
     db.commit()
@@ -134,6 +152,24 @@ def update_voyage(
         db_voyage.route_geometry = voyage_update.route_geometry
     if voyage_update.status is not None:
         db_voyage.status = voyage_update.status
+
+    if "route_id" in voyage_update.model_fields_set:
+        if voyage_update.route_id is not None:
+            db_route = db.query(Route).filter(Route.id == voyage_update.route_id).first()
+            if not db_route:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+            if db_route.operator_id != current_user.operator_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Route belongs to another operator")
+        db_voyage.route_id = voyage_update.route_id
+
+    if "ship_id" in voyage_update.model_fields_set:
+        if voyage_update.ship_id is not None:
+            db_ship = db.query(Ship).filter(Ship.id == voyage_update.ship_id).first()
+            if not db_ship:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ship not found")
+            if db_ship.operator_id != current_user.operator_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ship belongs to another operator")
+        db_voyage.ship_id = voyage_update.ship_id
 
     db.commit()
     db.refresh(db_voyage)

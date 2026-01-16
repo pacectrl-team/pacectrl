@@ -13,6 +13,8 @@ class Voyage(Base):
     operator_id = Column(Integer, ForeignKey("operators.id", ondelete="CASCADE"), nullable=False)  # FK to operators
     external_trip_id = Column(String, nullable=True)
     widget_config_id = Column(Integer, ForeignKey("widget_configs.id", ondelete="SET NULL"), nullable=True)
+    route_id = Column(Integer, ForeignKey("routes.id", ondelete="SET NULL"), nullable=True, index=True)
+    ship_id = Column(Integer, ForeignKey("ships.id", ondelete="SET NULL"), nullable=True, index=True)
     departure_port = Column(String, nullable=True)
     arrival_port = Column(String, nullable=True)
     departure_datetime = Column(TIMESTAMP, nullable=False)
@@ -29,4 +31,5 @@ class Voyage(Base):
 
     operator = relationship("Operator", back_populates="voyages")
     widget_config = relationship("WidgetConfig", back_populates="voyages")
-    voyage_speed_estimates = relationship("VoyageSpeedEstimate", back_populates="voyage")
+    route = relationship("Route", back_populates="voyages")
+    ship = relationship("Ship", back_populates="voyages")

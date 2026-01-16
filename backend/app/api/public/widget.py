@@ -5,7 +5,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.models.voyage import Voyage
 from app.models.widget_config import WidgetConfig
-from app.models.voyage_speed_estimate import VoyageSpeedEstimate
+from app.models.speed_to_emissions_estimate import SpeedToEmissionsEstimate
 from app.schemas.public_widget import PublicWidgetConfigOut
 from app.core.config import settings
 
@@ -60,17 +60,34 @@ def get_config(
             }
         )
 
-    # Get speed estimates
-    speed_estimates = db.query(VoyageSpeedEstimate).filter(VoyageSpeedEstimate.voyage_id == voyage.id).all()
+    if voyage.route_id is None or voyage.ship_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Voyage is missing route or ship linkage required for speed estimates",
+        )
 
-    #enforce three anchor points, one per profile
+    speed_estimates = (
+        db.query(SpeedToEmissionsEstimate)
+        .filter(
+            SpeedToEmissionsEstimate.route_id == voyage.route_id,
+            SpeedToEmissionsEstimate.ship_id == voyage.ship_id,
+        )
+        .all()
+    )
+
     if not speed_estimates:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No speed estimates found for this voyage")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No speed estimates configured for this route and ship",
+        )
+
     profiles = {estimate.profile for estimate in speed_estimates}
-    required_profiles = {"eco", "standard", "fast"}
+    required_profiles = {"slow", "standard", "fast"}
     if not required_profiles.issubset(profiles):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incomplete speed estimates for this voyage")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incomplete speed estimates for this route and ship",
+        )
 
     # Build anchors dict for the response, keyed by profile, eco/standard/fast
     anchors = {}
@@ -79,7 +96,7 @@ def get_config(
             "profile": estimate.profile,
             "speed_knots": estimate.speed_knots,
             "expected_emissions_kg_co2": estimate.expected_emissions_kg_co2,
-            "expected_arrival_delay_minutes": estimate.expected_arrival_delay_minutes,
+            "expected_arrival_delta_minutes": estimate.expected_arrival_delta_minutes,
         }
 
     # Compute derived values for the widget to have easy access to (widget loads faster)

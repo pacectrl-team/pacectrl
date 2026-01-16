@@ -8,6 +8,8 @@ class VoyageBase(BaseModel):
     operator_id: int
     external_trip_id: Optional[str] = None
     widget_config_id: Optional[int] = None
+    route_id: Optional[int] = None
+    ship_id: Optional[int] = None
     departure_port: Optional[str] = None
     arrival_port: Optional[str] = None
     departure_datetime: datetime
@@ -31,6 +33,8 @@ class VoyageUpdate(BaseModel):
     arrival_datetime: Optional[datetime] = None
     route_geometry: Optional[dict] = None
     status: Optional[str] = Field(None, pattern="^(planned|completed|cancelled)$")
+    route_id: Optional[int] = None
+    ship_id: Optional[int] = None
 
 
 class Voyage(VoyageBase):
@@ -38,6 +42,8 @@ class Voyage(VoyageBase):
     id: int
     created_at: datetime
     widget_config_id: Optional[int] = None
+    route_id: Optional[int] = None
+    ship_id: Optional[int] = None
 
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility
