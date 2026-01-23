@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from datetime import date, datetime
 from typing import Optional
-from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class VoyageBase(BaseModel):
@@ -8,12 +9,11 @@ class VoyageBase(BaseModel):
     operator_id: int
     external_trip_id: Optional[str] = None
     widget_config_id: Optional[int] = None
-    departure_port: Optional[str] = None
-    arrival_port: Optional[str] = None
-    departure_datetime: datetime
-    arrival_datetime: datetime
-    route_geometry: Optional[dict] = None  # JSONB as dict
-    status: str = Field(..., pattern="^(planned|completed|cancelled)$")  # Match model defaults
+    route_id: int
+    ship_id: int
+    departure_date: date
+    arrival_date: date
+    status: str = Field("planned", pattern="^(planned|completed|cancelled)$")
 
 
 class VoyageCreate(VoyageBase):
@@ -25,12 +25,11 @@ class VoyageUpdate(BaseModel):
     """Schema for updating a voyage (partial)."""
     external_trip_id: Optional[str] = None
     widget_config_id: Optional[int] = None
-    departure_port: Optional[str] = None
-    arrival_port: Optional[str] = None
-    departure_datetime: Optional[datetime] = None
-    arrival_datetime: Optional[datetime] = None
-    route_geometry: Optional[dict] = None
     status: Optional[str] = Field(None, pattern="^(planned|completed|cancelled)$")
+    route_id: Optional[int] = None
+    ship_id: Optional[int] = None
+    departure_date: Optional[date] = None
+    arrival_date: Optional[date] = None
 
 
 class Voyage(VoyageBase):
@@ -38,6 +37,7 @@ class Voyage(VoyageBase):
     id: int
     created_at: datetime
     widget_config_id: Optional[int] = None
+    ship_id: int
 
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility

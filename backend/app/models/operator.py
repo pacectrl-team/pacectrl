@@ -21,3 +21,7 @@ class Operator(Base):
     voyages = relationship("Voyage", back_populates="operator")
     # Relationship to widget configs, one-to-many
     widget_configs = relationship("WidgetConfig", back_populates="operator")
+    # Relationship to ships, one-to-many
+    ships = relationship("Ship", back_populates="operator", cascade="all, delete-orphan")
+    # Relationship to routes, one-to-many
+    routes = relationship("Route", back_populates="operator", cascade="all, delete-orphan")

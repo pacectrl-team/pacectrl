@@ -254,6 +254,9 @@ dist
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Custom ignores
 backend/test.db
 .github/copilot-instructions.md
 techdoc/
+widget-demo.html
