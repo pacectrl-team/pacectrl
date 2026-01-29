@@ -6,6 +6,7 @@ import OverviewSection from '../features/overview/OverviewSection'
 import ShipsSection from '../features/ships/ShipsSection'
 import RoutesSection from '../features/routes/RoutesSection'
 import SpeedEstimatesSection from '../features/speedEstimates/SpeedEstimatesSection'
+import WidgetsSection from '../features/widgets/WidgetsSection'
 
 export type DashboardSection =
   | 'overview'
@@ -116,6 +117,10 @@ function DashboardPage({ token, operatorId }: DashboardPageProps) {
 
               {activeSection === 'speed-estimates' && (
                 <SpeedEstimatesSection token={token} />
+              )}
+
+              {activeSection === 'widgets' && (
+                <WidgetsSection token={token} operatorId={operatorId} />
               )}
             </Stack>
           </Box>

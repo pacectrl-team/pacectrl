@@ -60,3 +60,40 @@ export type SpeedAnchorsEstimate = {
   standard: SpeedAnchorEstimate
   fast: SpeedAnchorEstimate
 }
+
+export type WidgetTheme = {
+  slow_color: string
+  fast_color: string
+  font_color: string
+  background_color: string
+  border_color: string
+  border_width: number
+  font_size: number
+  font_family: string
+  rounding_px: number
+  slider_dot_color: string
+}
+
+export type WidgetConfig = {
+  operator_id: number
+  name: string
+  description: string
+  config: {
+    default_speed_percentage: number
+    theme: WidgetTheme
+  }
+  is_active: boolean
+  id: number
+  created_at: string
+}
+
+export type WidgetConfigCreate = {
+  operator_id?: number
+  name: string
+  description: string
+  config: {
+    default_speed_percentage: number
+    theme: WidgetTheme
+  }
+  is_active: boolean
+}
