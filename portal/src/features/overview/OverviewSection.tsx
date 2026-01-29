@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Card, CardContent, Grid, Stack, Typography } from '@mui/material'
+import { Card, CardContent, Grid, Stack, Typography } from '@mui/material'
 import type { AuthMeResponse } from '../../types/api'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
@@ -85,7 +85,7 @@ function OverviewSection({ token }: OverviewSectionProps) {
           { label: 'Users', key: 'users' },
           { label: 'Ships', key: 'ships' },
         ].map((item) => (
-          <Grid item xs={6} sm={4} md={2} key={item.key}>
+          <Grid xs={6} sm={4} md={2} key={item.key}>
             <Card
               sx={{
                 height: '100%',

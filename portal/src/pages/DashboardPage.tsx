@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Box, Button, Container, Stack, Typography } from '@mui/material'
+import { Box, Button, Container, Stack } from '@mui/material'
 import UsersSection from '../features/users/UsersSection'
 import VoyagesSection from '../features/voyages/VoyagesSection'
 import OverviewSection from '../features/overview/OverviewSection'
