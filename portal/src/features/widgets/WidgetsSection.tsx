@@ -1,15 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  FormControlLabel,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Box, Button, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
 
 type WidgetsSectionProps = {
