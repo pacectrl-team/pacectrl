@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, Grid, Stack, Typography } from '@mui/material'
+import { Box, Card, CardContent, Stack, Typography } from '@mui/material'
 import type { AuthMeResponse } from '../../types/api'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
@@ -76,7 +76,17 @@ function OverviewSection({ token }: OverviewSectionProps) {
         </CardContent>
       </Card>
 
-      <Grid container spacing={2}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            sm: 'repeat(3, minmax(0, 1fr))',
+            md: 'repeat(6, minmax(0, 1fr))',
+          },
+        }}
+      >
         {[
           { label: 'Voyages', key: 'voyages' },
           { label: 'Routes', key: 'routes' },
@@ -85,31 +95,30 @@ function OverviewSection({ token }: OverviewSectionProps) {
           { label: 'Users', key: 'users' },
           { label: 'Ships', key: 'ships' },
         ].map((item) => (
-          <Grid xs={6} sm={4} md={2} key={item.key}>
-            <Card
-              sx={{
-                height: '100%',
-                bgcolor: 'background.paper',
-                borderRadius: 3,
-                boxShadow: 1,
-              }}
-            >
-              <CardContent>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{ textTransform: 'uppercase', letterSpacing: 0.6, mb: 0.5 }}
-                >
-                  {item.label}
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  0
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          <Card
+            key={item.key}
+            sx={{
+              height: '100%',
+              bgcolor: 'background.paper',
+              borderRadius: 3,
+              boxShadow: 1,
+            }}
+          >
+            <CardContent>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ textTransform: 'uppercase', letterSpacing: 0.6, mb: 0.5 }}
+              >
+                {item.label}
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                0
+              </Typography>
+            </CardContent>
+          </Card>
         ))}
-      </Grid>
+      </Box>
     </Stack>
   )
 }
