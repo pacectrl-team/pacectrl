@@ -8,10 +8,7 @@ class Settings(BaseSettings):
     # Database URL from environment (Railway sets for Postgres), defaults to local PostgreSQL
     database_url: str = os.getenv("DATABASE_URL")
 
-    # Secret key for legacy uses (kept for compatibility)
-    secret_key: str = os.getenv("SECRET_KEY")
-
-    # Dedicated JWT secret (prefers JWT_SECRET_KEY, falls back to SECRET_KEY)
+    # Dedicated JWT secret key
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY")
 
     # JWT algorithm
