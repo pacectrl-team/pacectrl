@@ -1,4 +1,5 @@
 import hashlib
+import re
 import time
 import uuid
 from fastapi import Request, Response
@@ -8,6 +9,10 @@ from sqlalchemy.orm import Session
 from app.core import security
 from app.core.database import SessionLocal
 from app.models.api_log import ApiLog
+
+
+# Regex pattern to extract voyage_id from URL paths like /voyages/{voyage_id}/...
+VOYAGE_ID_PATTERN = re.compile(r"/voyages/(\d+)")
 
 
 class ApiLoggingMiddleware(BaseHTTPMiddleware):
@@ -32,18 +37,29 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 raw_sub = payload.get("sub")
                 if raw_sub is not None:
                     user_id = int(raw_sub)
-                else:
-                    user_id = None
-                
+
                 raw_op = payload.get("operator_id")
                 if raw_op is not None:
                     operator_id = int(raw_op)
-                else:
-                    operator_id = None
 
             except Exception:
                 # Ignore token errors for logging; do not block the request
                 pass
+
+        # Extract voyage_id from URL path or query parameters
+        voyage_id = None
+        path = request.url.path
+
+        # First, try to extract from URL path (e.g., /voyages/123)
+        voyage_match = VOYAGE_ID_PATTERN.search(path)
+        if voyage_match:
+            voyage_id = int(voyage_match.group(1))
+
+        # If not found in path, check query parameters (e.g., ?voyage_id=123)
+        if voyage_id is None:
+            query_voyage_id = request.query_params.get("voyage_id")
+            if query_voyage_id and query_voyage_id.isdigit():
+                voyage_id = int(query_voyage_id)
 
         # Call the next middleware/route handler
         response: Response = await call_next(request)
@@ -54,7 +70,6 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
 
         # Extract details
         method = request.method
-        path = request.url.path
         status_code = response.status_code
         user_agent = request.headers.get("user-agent")
         client_ip = request.client.host if request.client else None
@@ -71,6 +86,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 response_ms=response_ms,
                 operator_id=operator_id,
                 user_id=user_id,
+                voyage_id=voyage_id,
                 ip_hash=ip_hash,
                 user_agent=user_agent,
             )
