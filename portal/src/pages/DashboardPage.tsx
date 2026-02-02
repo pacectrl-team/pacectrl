@@ -101,7 +101,9 @@ function DashboardPage({ token, operatorId }: DashboardPageProps) {
 
           <Box className="dashboard-main">
             <Stack spacing={3}>
-              {activeSection === 'overview' && <OverviewSection token={token} />}
+              {activeSection === 'overview' && (
+                <OverviewSection token={token} onNavigate={setActiveSection} />
+              )}
 
               {activeSection === 'users' && (
                 <UsersSection token={token} operatorId={operatorId} />

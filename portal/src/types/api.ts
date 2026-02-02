@@ -97,3 +97,11 @@ export type WidgetConfigCreate = {
   }
   is_active: boolean
 }
+
+export type DashboardOverview = {
+  voyages: number
+  routes: number
+  widget_configs: number
+  users: number
+  ships: number
+}
