@@ -1,5 +1,6 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
@@ -17,8 +18,13 @@ class ApiLog(Base):
     path = Column(String, nullable=False)
     status_code = Column(Integer, nullable=False)
     response_ms = Column(Integer, nullable=False)
-    operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    voyage_id = Column(Integer, nullable=True)  # FK to voyages.id when implemented
+    operator_id = Column(Integer, ForeignKey("operators.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    voyage_id = Column(Integer, ForeignKey("voyages.id", ondelete="SET NULL"), nullable=True, index=True)
     ip_hash = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
+
+    # Relationships for easier querying
+    operator = relationship("Operator")
+    user = relationship("User")
+    voyage = relationship("Voyage")
