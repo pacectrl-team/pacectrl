@@ -105,3 +105,9 @@ export type DashboardOverview = {
   users: number
   ships: number
 }
+
+export type OperatorSummary = {
+  id: number
+  name: string
+  created_at: string
+}

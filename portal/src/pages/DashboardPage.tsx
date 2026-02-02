@@ -7,6 +7,7 @@ import ShipsSection from '../features/ships/ShipsSection'
 import RoutesSection from '../features/routes/RoutesSection'
 import SpeedEstimatesSection from '../features/speedEstimates/SpeedEstimatesSection'
 import WidgetsSection from '../features/widgets/WidgetsSection'
+import OperatorSection from '../features/operators/OperatorSection'
 
 export type DashboardSection =
   | 'overview'
@@ -54,7 +55,7 @@ function DashboardPage({ token, operatorId }: DashboardPageProps) {
                 className="sidebar-link"
                 onClick={() => setActiveSection('operators')}
               >
-                Operators
+                Operator
               </Button>
               <Button
                 variant={activeSection === 'voyages' ? 'contained' : 'text'}
@@ -111,6 +112,10 @@ function DashboardPage({ token, operatorId }: DashboardPageProps) {
 
               {activeSection === 'voyages' && (
                 <VoyagesSection token={token} operatorId={operatorId} />
+              )}
+
+              {activeSection === 'operators' && (
+                <OperatorSection token={token} operatorId={operatorId} />
               )}
 
               {activeSection === 'ships' && <ShipsSection token={token} />}
