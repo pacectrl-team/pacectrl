@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Box, Button, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import type { UserSummary } from '../../types/api'
 
 type UsersSectionProps = {
@@ -176,13 +176,17 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
               required
             />
             <TextField
-              label="Role (e.g. captain, admin)"
+              label="Role"
               variant="outlined"
+              select
               value={createRole}
               onChange={(event) => setCreateRole(event.target.value)}
               fullWidth
               required
-            />
+            >
+              <MenuItem value="captain">captain</MenuItem>
+              <MenuItem value="admin">admin</MenuItem>
+            </TextField>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -277,10 +281,14 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
               <TextField
                 label="Role"
                 variant="outlined"
+                select
                 value={editRole}
                 onChange={(event) => setEditRole(event.target.value)}
                 fullWidth
-              />
+              >
+                <MenuItem value="captain">captain</MenuItem>
+                <MenuItem value="admin">admin</MenuItem>
+              </TextField>
             </Stack>
             <TextField
               label="New password (optional)"

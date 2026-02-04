@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Box, Button, Stack, TextField, Typography } from '@mui/material'
-import type { VoyageSummary } from '../../types/api'
+import { Box, Button, Stack, TextField, Typography, MenuItem } from '@mui/material'
+import type { VoyageSummary, ShipSummary, RouteSummary } from '../../types/api'
 
 type VoyagesSectionProps = {
   token: string
@@ -8,11 +8,15 @@ type VoyagesSectionProps = {
 }
 
 const VOYAGES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/'
+const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
+const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
 
 function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [voyages, setVoyages] = useState<VoyageSummary[]>([])
   const [voyagesLoading, setVoyagesLoading] = useState(false)
   const [voyagesError, setVoyagesError] = useState('')
+  const [ships, setShips] = useState<ShipSummary[]>([])
+  const [routes, setRoutes] = useState<RouteSummary[]>([])
   const [createVoyageExternalTripId, setCreateVoyageExternalTripId] = useState('')
   const [createVoyageWidgetConfigId, setCreateVoyageWidgetConfigId] = useState('')
   const [createVoyageRouteId, setCreateVoyageRouteId] = useState('')
@@ -57,8 +61,54 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     }
   }
 
+  const fetchShips = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(SHIPS_URL, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load ships')
+      }
+
+      const data = (await response.json()) as ShipSummary[]
+      setShips(data)
+    } catch {
+      setVoyagesError('Unable to load ships. Please try again.')
+    }
+  }
+
+  const fetchRoutes = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(ROUTES_URL, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load routes')
+      }
+
+      const data = (await response.json()) as RouteSummary[]
+      setRoutes(data)
+    } catch {
+      setVoyagesError('Unable to load routes. Please try again.')
+    }
+  }
+
   useEffect(() => {
     void fetchVoyages()
+    void fetchShips()
+    void fetchRoutes()
   }, [token])
 
   const handleCreateVoyage = async (event: FormEvent<HTMLFormElement>) => {
@@ -230,19 +280,39 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label="Route ID"
+              label="Route"
               variant="outlined"
+              select
               value={createVoyageRouteId}
               onChange={(event) => setCreateVoyageRouteId(event.target.value)}
               fullWidth
-            />
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {routes.map((route) => (
+                <MenuItem key={route.id} value={String(route.id)}>
+                  {route.name} (ID: {route.id})
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
-              label="Ship ID"
+              label="Ship"
               variant="outlined"
+              select
               value={createVoyageShipId}
               onChange={(event) => setCreateVoyageShipId(event.target.value)}
               fullWidth
-            />
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {ships.map((ship) => (
+                <MenuItem key={ship.id} value={String(ship.id)}>
+                  {ship.name} (ID: {ship.id})
+                </MenuItem>
+              ))}
+            </TextField>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -354,19 +424,39 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
-                label="Route ID"
+                label="Route"
                 variant="outlined"
+                select
                 value={editVoyageRouteId}
                 onChange={(event) => setEditVoyageRouteId(event.target.value)}
                 fullWidth
-              />
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {routes.map((route) => (
+                  <MenuItem key={route.id} value={String(route.id)}>
+                    {route.name} (ID: {route.id})
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
-                label="Ship ID"
+                label="Ship"
                 variant="outlined"
+                select
                 value={editVoyageShipId}
                 onChange={(event) => setEditVoyageShipId(event.target.value)}
                 fullWidth
-              />
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {ships.map((ship) => (
+                  <MenuItem key={ship.id} value={String(ship.id)}>
+                    {ship.name} (ID: {ship.id})
+                  </MenuItem>
+                ))}
+              </TextField>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

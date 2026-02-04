@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Box, Button, Stack, TextField, Typography, Switch, FormControlLabel } from '@mui/material'
-import type { RouteSummary, RouteGeometry } from '../../types/api'
+import type { RouteSummary } from '../../types/api'
 
 type RoutesSectionProps = {
   token: string
@@ -18,7 +18,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [createArrivalPort, setCreateArrivalPort] = useState('')
   const [createDepartureTime, setCreateDepartureTime] = useState('')
   const [createArrivalTime, setCreateArrivalTime] = useState('')
-  const [createRouteGeometry, setCreateRouteGeometry] = useState('')
   const [createIsActive, setCreateIsActive] = useState(true)
 
   const [selectedRoute, setSelectedRoute] = useState<RouteSummary | null>(null)
@@ -27,7 +26,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [editArrivalPort, setEditArrivalPort] = useState('')
   const [editDepartureTime, setEditDepartureTime] = useState('')
   const [editArrivalTime, setEditArrivalTime] = useState('')
-  const [editRouteGeometry, setEditRouteGeometry] = useState('')
   const [editIsActive, setEditIsActive] = useState(true)
 
   const fetchRoutes = async () => {
@@ -66,26 +64,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
     return main
   }
 
-  const safeParseGeometry = (value: string): RouteGeometry | undefined => {
-    if (!value.trim()) return undefined
-    try {
-      return JSON.parse(value) as RouteGeometry
-    } catch {
-      setRoutesError('Route geometry must be valid JSON.')
-      return undefined
-    }
-  }
-
   const handleCreateRoute = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!token) {
       setRoutesError('You must be logged in to create routes.')
-      return
-    }
-
-    const geometry = safeParseGeometry(createRouteGeometry)
-    if (createRouteGeometry && !geometry) {
       return
     }
 
@@ -96,7 +79,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
         arrival_port: string
         departure_time: string
         arrival_time: string
-        route_geometry?: RouteGeometry
         is_active: boolean
       } = {
         name: createName,
@@ -105,10 +87,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
         departure_time: createDepartureTime,
         arrival_time: createArrivalTime,
         is_active: createIsActive,
-      }
-
-      if (geometry) {
-        body.route_geometry = geometry
       }
 
       const response = await fetch(ROUTES_URL, {
@@ -129,7 +107,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateArrivalPort('')
       setCreateDepartureTime('')
       setCreateArrivalTime('')
-      setCreateRouteGeometry('')
       setCreateIsActive(true)
 
       await fetchRoutes()
@@ -145,17 +122,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
     setEditArrivalPort(route.arrival_port)
     setEditDepartureTime(extractTimeForInput(route.departure_time))
     setEditArrivalTime(extractTimeForInput(route.arrival_time))
-    setEditRouteGeometry(route.route_geometry ? JSON.stringify(route.route_geometry, null, 2) : '')
     setEditIsActive(route.is_active)
   }
 
   const handleUpdateRoute = async () => {
     if (!token || !selectedRoute) return
-
-    const geometry = safeParseGeometry(editRouteGeometry)
-    if (editRouteGeometry && !geometry) {
-      return
-    }
 
     const body: {
       name?: string
@@ -163,7 +134,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
       arrival_port?: string
       departure_time?: string
       arrival_time?: string
-      route_geometry?: RouteGeometry | null
       is_active?: boolean
     } = {}
 
@@ -176,12 +146,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
       body.departure_time = editDepartureTime
     if (editArrivalTime && editArrivalTime !== selectedRoute.arrival_time)
       body.arrival_time = editArrivalTime
-
-    if (editRouteGeometry) {
-      if (geometry) body.route_geometry = geometry
-    } else if (selectedRoute.route_geometry !== null) {
-      body.route_geometry = null
-    }
 
     if (editIsActive !== selectedRoute.is_active) body.is_active = editIsActive
 
@@ -228,7 +192,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditArrivalPort('')
       setEditDepartureTime('')
       setEditArrivalTime('')
-      setEditRouteGeometry('')
       setEditIsActive(true)
 
       await fetchRoutes()
@@ -300,15 +263,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
               required
             />
           </Stack>
-          <TextField
-            label="Route geometry (JSON, optional)"
-            variant="outlined"
-            value={createRouteGeometry}
-            onChange={(event) => setCreateRouteGeometry(event.target.value)}
-            fullWidth
-            multiline
-            minRows={3}
-          />
           <Button type="submit" variant="contained" color="success">
             Create route
           </Button>
@@ -419,15 +373,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
                 fullWidth
               />
             </Stack>
-            <TextField
-              label="Route geometry (JSON, optional)"
-              variant="outlined"
-              value={editRouteGeometry}
-              onChange={(event) => setEditRouteGeometry(event.target.value)}
-              fullWidth
-              multiline
-              minRows={3}
-            />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Button
                 variant="contained"
