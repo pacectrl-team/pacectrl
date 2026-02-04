@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -35,3 +35,22 @@ class SpeedEstimateAnchorsResponse(BaseModel):
     """Response wrapper keyed by profile for easy consumption."""
 
     anchors: Dict[str, SpeedEstimateAnchorOut]
+
+
+class RouteShipAnchorsOut(BaseModel):
+    """
+    Speed estimates grouped by route+ship combination.
+    Contains route/ship identifiers and all configured anchors.
+    """
+
+    route_id: int
+    route_name: str
+    ship_id: int
+    ship_name: str
+    anchors: Dict[str, SpeedEstimateAnchorOut]
+
+
+class AllSpeedEstimatesResponse(BaseModel):
+    """Response containing all speed estimates for an operator."""
+
+    items: List[RouteShipAnchorsOut]
