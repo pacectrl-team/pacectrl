@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
@@ -12,11 +12,13 @@ import {
   TableRow,
   TableContainer,
   Paper,
+  MenuItem,
 } from '@mui/material'
-import type { SpeedAnchorsEstimate } from '../../types/api'
+import type { SpeedAnchorsEstimate, RouteSummary } from '../../types/api'
 
 type SpeedEstimatesSectionProps = {
   token: string
+  initialShipId?: number | null
 }
 
 type SpeedEstimateEntry = {
@@ -25,9 +27,13 @@ type SpeedEstimateEntry = {
   data: SpeedAnchorsEstimate
 }
 
-function SpeedEstimatesSection({ token }: SpeedEstimatesSectionProps) {
+const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
+
+function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionProps) {
   const [routeId, setRouteId] = useState('')
   const [shipId, setShipId] = useState('')
+
+  const [routes, setRoutes] = useState<RouteSummary[]>([])
 
   const [slowSpeedKnots, setSlowSpeedKnots] = useState('')
   const [slowEmissions, setSlowEmissions] = useState('')
@@ -47,6 +53,28 @@ function SpeedEstimatesSection({ token }: SpeedEstimatesSectionProps) {
 
   const [entries, setEntries] = useState<SpeedEstimateEntry[]>([])
 
+  const fetchRoutes = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(ROUTES_URL, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load routes')
+      }
+
+      const data = (await response.json()) as RouteSummary[]
+      setRoutes(data)
+    } catch {
+      setError('Unable to load routes. Please try again.')
+    }
+  }
+
   const resetMessages = () => {
     setError('')
     setSuccess('')
@@ -65,6 +93,14 @@ function SpeedEstimatesSection({ token }: SpeedEstimatesSectionProps) {
     setFastEmissions(String(data.fast.expected_emissions_kg_co2))
     setFastArrivalDelta(String(data.fast.expected_arrival_delta_minutes))
   }
+
+  useEffect(() => {
+    void fetchRoutes()
+
+    if (initialShipId != null) {
+      setShipId(String(initialShipId))
+    }
+  }, [token, initialShipId])
 
   const loadFromApi = async (routeIdNum: number, shipIdNum: number) => {
     setLoading(true)
@@ -227,19 +263,39 @@ function SpeedEstimatesSection({ token }: SpeedEstimatesSectionProps) {
       <Stack spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
-            label="Route ID"
+            label="Route"
             variant="outlined"
+            select
             value={routeId}
             onChange={(event) => setRouteId(event.target.value)}
             fullWidth
-          />
-          <TextField
-            label="Ship ID"
-            variant="outlined"
-            value={shipId}
-            onChange={(event) => setShipId(event.target.value)}
-            fullWidth
-          />
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {routes.map((route) => (
+              <MenuItem key={route.id} value={String(route.id)}>
+                {route.name} (ID: {route.id})
+              </MenuItem>
+            ))}
+          </TextField>
+          {initialShipId != null ? (
+            <TextField
+              label="Ship ID"
+              variant="outlined"
+              value={shipId}
+              fullWidth
+              disabled
+            />
+          ) : (
+            <TextField
+              label="Ship ID"
+              variant="outlined"
+              value={shipId}
+              onChange={(event) => setShipId(event.target.value)}
+              fullWidth
+            />
+          )}
         </Stack>
 
         <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
@@ -385,7 +441,10 @@ function SpeedEstimatesSection({ token }: SpeedEstimatesSectionProps) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {entries.map((entry) => (
+                  {(initialShipId != null
+                    ? entries.filter((entry) => entry.shipId === initialShipId)
+                    : entries
+                  ).map((entry) => (
                     <TableRow
                       key={`${entry.routeId}-${entry.shipId}`}
                       hover

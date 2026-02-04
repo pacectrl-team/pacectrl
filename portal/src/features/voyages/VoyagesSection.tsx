@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Box, Button, Stack, TextField, Typography, MenuItem } from '@mui/material'
-import type { VoyageSummary, ShipSummary, RouteSummary } from '../../types/api'
+import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
 
 type VoyagesSectionProps = {
   token: string
@@ -10,6 +10,8 @@ type VoyagesSectionProps = {
 const VOYAGES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/'
 const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
+const WIDGET_CONFIGS_URL =
+  'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 
 function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [voyages, setVoyages] = useState<VoyageSummary[]>([])
@@ -17,6 +19,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [voyagesError, setVoyagesError] = useState('')
   const [ships, setShips] = useState<ShipSummary[]>([])
   const [routes, setRoutes] = useState<RouteSummary[]>([])
+  const [widgetConfigs, setWidgetConfigs] = useState<WidgetConfig[]>([])
   const [createVoyageExternalTripId, setCreateVoyageExternalTripId] = useState('')
   const [createVoyageWidgetConfigId, setCreateVoyageWidgetConfigId] = useState('')
   const [createVoyageRouteId, setCreateVoyageRouteId] = useState('')
@@ -105,10 +108,33 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     }
   }
 
+  const fetchWidgetConfigs = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(WIDGET_CONFIGS_URL, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load widget configs')
+      }
+
+      const data = (await response.json()) as WidgetConfig[]
+      setWidgetConfigs(data)
+    } catch {
+      setVoyagesError('Unable to load widget configs. Please try again.')
+    }
+  }
+
   useEffect(() => {
     void fetchVoyages()
     void fetchShips()
     void fetchRoutes()
+    void fetchWidgetConfigs()
   }, [token])
 
   const handleCreateVoyage = async (event: FormEvent<HTMLFormElement>) => {
@@ -339,12 +365,22 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
             />
           </Stack>
           <TextField
-            label="Widget config ID (optional)"
+            label="Widget config (optional)"
             variant="outlined"
+            select
             value={createVoyageWidgetConfigId}
             onChange={(event) => setCreateVoyageWidgetConfigId(event.target.value)}
             fullWidth
-          />
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {widgetConfigs.map((config) => (
+              <MenuItem key={config.id} value={String(config.id)}>
+                {config.name} (ID: {config.id})
+              </MenuItem>
+            ))}
+          </TextField>
           <Button type="submit" variant="contained" color="success">
             Create voyage
           </Button>
@@ -481,12 +517,22 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
               />
             </Stack>
             <TextField
-              label="Widget config ID"
+              label="Widget config"
               variant="outlined"
+              select
               value={editVoyageWidgetConfigId}
               onChange={(event) => setEditVoyageWidgetConfigId(event.target.value)}
               fullWidth
-            />
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {widgetConfigs.map((config) => (
+                <MenuItem key={config.id} value={String(config.id)}>
+                  {config.name} (ID: {config.id})
+                </MenuItem>
+              ))}
+            </TextField>
             <Button
               variant="contained"
               color="success"
