@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import type { ShipSummary } from '../../types/api'
-import SpeedEstimatesSection from '../speedEstimates/SpeedEstimatesSection'
 
 type ShipsSectionProps = {
   token: string
@@ -267,12 +266,6 @@ function ShipsSection({ token }: ShipsSectionProps) {
               </Button>
             </Stack>
           </Stack>
-          <Box mt={4}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
-              Speed estimates
-            </Typography>
-            <SpeedEstimatesSection token={token} initialShipId={selectedShip.id} />
-          </Box>
         </Box>
       )}
     </Stack>
