@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
+import { Card, CardContent, Chip, Stack, Typography } from '@mui/material'
 import type { OperatorSummary } from '../../types/api'
 
 const OPERATOR_URL_BASE =
