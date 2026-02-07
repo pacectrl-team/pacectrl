@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,6 +10,8 @@ from app.models.ship import Ship
 from app.models.speed_to_emissions_estimate import SpeedToEmissionsEstimate
 from app.models.user import User
 from app.schemas.speed_to_emissions_estimate import (
+    AllSpeedEstimatesResponse,
+    RouteShipAnchorsOut,
     SpeedEstimateAnchor,
     SpeedEstimateAnchorOut,
     SpeedEstimateAnchorsResponse,
@@ -44,6 +46,58 @@ def _get_operator_route_and_ship(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ship belongs to another operator")
 
     return route, ship
+
+
+@router.get("/", response_model=AllSpeedEstimatesResponse)
+def list_all_speed_estimates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return all speed-to-emissions estimates for the current operator.
+    """
+    operator_id = current_user.operator_id
+
+    # Join through Route to filter by operator, also join Ship to get names
+    estimates = (
+        db.query(SpeedToEmissionsEstimate, Route, Ship)
+        .join(Route, SpeedToEmissionsEstimate.route_id == Route.id)
+        .join(Ship, SpeedToEmissionsEstimate.ship_id == Ship.id)
+        .filter(Route.operator_id == operator_id)
+        .order_by(Route.name, Ship.name, SpeedToEmissionsEstimate.profile)
+        .all()
+    )
+
+    # Group by route+ship combination
+    grouped: Dict[tuple, Dict] = {}
+    for estimate, route, ship in estimates:
+        key = (route.id, ship.id)
+
+        if key not in grouped:
+            grouped[key] = {
+                "route_id": route.id,
+                "route_name": route.name,
+                "ship_id": ship.id,
+                "ship_name": ship.name,
+                "anchors": {},
+            }
+
+        # Add this anchor to the group
+        grouped[key]["anchors"][estimate.profile] = SpeedEstimateAnchorOut(
+            id=estimate.id,
+            profile=estimate.profile,
+            speed_knots=float(estimate.speed_knots),
+            expected_emissions_kg_co2=float(estimate.expected_emissions_kg_co2),
+            expected_arrival_delta_minutes=estimate.expected_arrival_delta_minutes,
+            created_at=estimate.created_at,
+        )
+
+    # Convert to list of response objects
+    items: List[RouteShipAnchorsOut] = [
+        RouteShipAnchorsOut(**data) for data in grouped.values()
+    ]
+
+    return AllSpeedEstimatesResponse(items=items)
 
 
 @router.get(
