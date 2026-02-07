@@ -14,7 +14,13 @@ import {
   Paper,
   MenuItem,
 } from '@mui/material'
-import type { SpeedAnchorsEstimate, RouteSummary, ShipSummary } from '../../types/api'
+import type {
+  AllSpeedEstimatesResponse,
+  RouteShipAnchorsOut,
+  SpeedAnchorsEstimate,
+  RouteSummary,
+  SpeedEstimateAnchorsResponse,
+} from '../../types/api'
 
 type SpeedEstimatesSectionProps = {
   token: string
@@ -27,19 +33,7 @@ type SpeedEstimateEntry = {
   data: SpeedAnchorsEstimate
 }
 
-type SpeedEstimateAnchorItem = {
-  id: number
-  route_id: number
-  ship_id: number
-  profile: string
-  speed_knots: number
-  expected_emissions_kg_co2: number
-  expected_arrival_delta_minutes: number
-  created_at: string
-}
-
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
-const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 const SPEED_ESTIMATES_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/'
 
@@ -48,7 +42,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [shipId, setShipId] = useState('')
 
   const [routes, setRoutes] = useState<RouteSummary[]>([])
-  const [ships, setShips] = useState<ShipSummary[]>([])
 
   const [slowSpeedKnots, setSlowSpeedKnots] = useState('')
   const [slowEmissions, setSlowEmissions] = useState('')
@@ -90,28 +83,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     }
   }
 
-  const fetchShips = async () => {
-    if (!token) return
-
-    try {
-      const response = await fetch(SHIPS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load ships')
-      }
-
-      const data = (await response.json()) as ShipSummary[]
-      setShips(data)
-    } catch {
-      setError('Unable to load ships. Please try again.')
-    }
-  }
-
   const fetchAllEstimates = async () => {
     if (!token) return
 
@@ -127,64 +98,49 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         throw new Error('Failed to load speed estimates')
       }
 
-      const items = (await response.json()) as SpeedEstimateAnchorItem[]
+      const json = (await response.json()) as AllSpeedEstimatesResponse
 
-      const grouped: Record<
-        string,
-        {
-          routeId: number
-          shipId: number
-          slow?: SpeedEstimateAnchorItem
-          standard?: SpeedEstimateAnchorItem
-          fast?: SpeedEstimateAnchorItem
-        }
-      > = {}
+      const nextEntries: SpeedEstimateEntry[] = json.items
+        .map((item: RouteShipAnchorsOut) => {
+          const anchors = item.anchors
 
-      for (const item of items) {
-        const key = `${item.route_id}-${item.ship_id}`
-        if (!grouped[key]) {
-          grouped[key] = {
+          const slow = anchors.slow || anchors['slow']
+          const standard = anchors.standard || anchors['standard']
+          const fast = anchors.fast || anchors['fast']
+
+          if (!slow || !standard || !fast) {
+            return null
+          }
+
+          const data: SpeedAnchorsEstimate = {
+            slow: {
+              speed_knots: slow.speed_knots,
+              expected_emissions_kg_co2: slow.expected_emissions_kg_co2,
+              expected_arrival_delta_minutes:
+                slow.expected_arrival_delta_minutes,
+            },
+            standard: {
+              speed_knots: standard.speed_knots,
+              expected_emissions_kg_co2:
+                standard.expected_emissions_kg_co2,
+              expected_arrival_delta_minutes:
+                standard.expected_arrival_delta_minutes,
+            },
+            fast: {
+              speed_knots: fast.speed_knots,
+              expected_emissions_kg_co2: fast.expected_emissions_kg_co2,
+              expected_arrival_delta_minutes:
+                fast.expected_arrival_delta_minutes,
+            },
+          }
+
+          return {
             routeId: item.route_id,
             shipId: item.ship_id,
+            data,
           }
-        }
-
-        if (item.profile === 'slow') {
-          grouped[key].slow = item
-        } else if (item.profile === 'standard') {
-          grouped[key].standard = item
-        } else if (item.profile === 'fast') {
-          grouped[key].fast = item
-        }
-      }
-
-      const nextEntries: SpeedEstimateEntry[] = []
-      for (const group of Object.values(grouped)) {
-        if (!group.slow || !group.standard || !group.fast) continue
-
-        const data: SpeedAnchorsEstimate = {
-          slow: {
-            speed_knots: group.slow.speed_knots,
-            expected_emissions_kg_co2: group.slow.expected_emissions_kg_co2,
-            expected_arrival_delta_minutes:
-              group.slow.expected_arrival_delta_minutes,
-          },
-          standard: {
-            speed_knots: group.standard.speed_knots,
-            expected_emissions_kg_co2: group.standard.expected_emissions_kg_co2,
-            expected_arrival_delta_minutes:
-              group.standard.expected_arrival_delta_minutes,
-          },
-          fast: {
-            speed_knots: group.fast.speed_knots,
-            expected_emissions_kg_co2: group.fast.expected_emissions_kg_co2,
-            expected_arrival_delta_minutes:
-              group.fast.expected_arrival_delta_minutes,
-          },
-        }
-
-        nextEntries.push({ routeId: group.routeId, shipId: group.shipId, data })
-      }
+        })
+        .filter((entry): entry is SpeedEstimateEntry => entry !== null)
 
       setEntries(nextEntries)
     } catch {
@@ -213,7 +169,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   useEffect(() => {
     void fetchRoutes()
-    void fetchShips()
+
+    // Load all existing speed estimates for the table from the items array
     void fetchAllEstimates()
 
     if (initialShipId != null) {
@@ -238,7 +195,36 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         throw new Error('Failed to load speed estimates')
       }
 
-      const data = (await response.json()) as SpeedAnchorsEstimate
+      const json = (await response.json()) as SpeedEstimateAnchorsResponse
+
+      const slow = json.anchors.slow || json.anchors['slow']
+      const standard = json.anchors.standard || json.anchors['standard']
+      const fast = json.anchors.fast || json.anchors['fast']
+
+      if (!slow || !standard || !fast) {
+        throw new Error('Incomplete anchors returned from API')
+      }
+
+      const data: SpeedAnchorsEstimate = {
+        slow: {
+          speed_knots: slow.speed_knots,
+          expected_emissions_kg_co2: slow.expected_emissions_kg_co2,
+          expected_arrival_delta_minutes:
+            slow.expected_arrival_delta_minutes,
+        },
+        standard: {
+          speed_knots: standard.speed_knots,
+          expected_emissions_kg_co2: standard.expected_emissions_kg_co2,
+          expected_arrival_delta_minutes:
+            standard.expected_arrival_delta_minutes,
+        },
+        fast: {
+          speed_knots: fast.speed_knots,
+          expected_emissions_kg_co2: fast.expected_emissions_kg_co2,
+          expected_arrival_delta_minutes:
+            fast.expected_arrival_delta_minutes,
+        },
+      }
 
       applyDataToForm(data)
 
@@ -370,7 +356,9 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     setRouteId(String(entry.routeId))
     setShipId(String(entry.shipId))
     resetMessages()
-    void loadFromApi(entry.routeId, entry.shipId)
+    // Use existing data for a snappy UX; user can then Save which
+    // persists through the anchors API for this route+ship.
+    applyDataToForm(entry.data)
   }
 
   return (
@@ -408,22 +396,12 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
             />
           ) : (
             <TextField
-              label="Ship"
+              label="Ship ID"
               variant="outlined"
-              select
               value={shipId}
               onChange={(event) => setShipId(event.target.value)}
               fullWidth
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {ships.map((ship) => (
-                <MenuItem key={ship.id} value={String(ship.id)}>
-                  {ship.name} (ID: {ship.id})
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           )}
         </Stack>
 

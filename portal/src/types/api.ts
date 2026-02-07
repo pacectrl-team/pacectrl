@@ -61,6 +61,31 @@ export type SpeedAnchorsEstimate = {
   fast: SpeedAnchorEstimate
 }
 
+export type SpeedEstimateAnchorOut = {
+  speed_knots: number
+  expected_emissions_kg_co2: number
+  expected_arrival_delta_minutes: number
+  id: number
+  profile: string
+  created_at: string
+}
+
+export type RouteShipAnchorsOut = {
+  route_id: number
+  route_name: string
+  ship_id: number
+  ship_name: string
+  anchors: Record<string, SpeedEstimateAnchorOut>
+}
+
+export type AllSpeedEstimatesResponse = {
+  items: RouteShipAnchorsOut[]
+}
+
+export type SpeedEstimateAnchorsResponse = {
+  anchors: Record<string, SpeedEstimateAnchorOut>
+}
+
 export type WidgetTheme = {
   slow_color: string
   fast_color: string

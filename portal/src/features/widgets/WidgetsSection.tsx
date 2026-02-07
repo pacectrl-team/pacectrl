@@ -269,7 +269,7 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
 
     try {
       const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedConfig.id}`, {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
