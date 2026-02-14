@@ -63,194 +63,245 @@ type InterpolatedMetrics = {
 
 const STYLE_ID = "pace-ctrl-widget-style";
 
+/* ---------------------------------------------------------------------------
+ * Styles – inspired by the MoodWidget light-card aesthetic.
+ * The background gradient hue shifts dynamically from green (slow) to red
+ * (fast) based on the slider position, exactly like the mood widget.
+ * -------------------------------------------------------------------------*/
 const BASE_STYLES = `
   .pcw-root {
     position: relative;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: var(--pcw-text, #f8fafc);
+    font-family: var(--pcw-font-family, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+    font-size: var(--pcw-base-font-size, 16px);
+    color: var(--pcw-text, #0b1f29);
     border-radius: var(--pcw-rounding, 24px);
-    padding: 28px 24px 24px;
-    width: min(420px, 100%);
-    box-shadow: 0 28px 60px -32px rgba(15, 23, 42, 0.55);
-    overflow: hidden;
-    border: 1px solid var(--pcw-border, rgba(148, 163, 184, 0.18));
-    backdrop-filter: blur(18px);
+    padding: 2.5rem 2rem;
+    width: var(--pcw-width, min(640px, 100%));
+    box-sizing: border-box;
+    border: var(--pcw-border-width, 1px) solid var(--pcw-border, rgba(12, 59, 46, 0.12));
+    box-shadow: 0 20px 35px rgba(15, 40, 35, 0.1);
+    background: var(--pcw-dynamic-background, linear-gradient(180deg, hsl(140, 82%, 92%) 0%, #ffffff 100%));
+    transition: background 220ms ease;
   }
 
-  .pcw-root::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: var(--pcw-dynamic-background, linear-gradient(135deg, #16a34a, #dc2626));
-    opacity: 0.95;
-    transition: background 180ms ease, opacity 180ms ease;
-    z-index: 0;
+  /* ---------- Control section (label + info + slider) ---------- */
+
+  .pcw-control {
+    margin-bottom: 2rem;
   }
 
-  .pcw-root::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(165deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.65) 100%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .pcw-root > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .pcw-slider {
+  .pcw-control-header {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 22px;
-  }
-
-  .pcw-slider-top {
-    display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
   }
 
   .pcw-slider-label {
-    font-size: 0.78rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(241, 245, 249, 0.7);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--pcw-text, rgba(11, 31, 41, 0.92));
   }
 
-  .pcw-slider-value-group {
+  .pcw-info-toggle {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(11, 31, 41, 0.2);
+    background: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(11, 31, 41, 0.8);
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease;
+  }
+
+  .pcw-info-toggle:hover {
+    background: rgba(255, 255, 255, 0.85);
+    transform: scale(1.04);
+  }
+
+  .pcw-info-toggle:focus {
+    outline: 3px solid rgba(15, 157, 88, 0.35);
+    outline-offset: 2px;
+  }
+
+  .pcw-info {
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(6, 65, 58, 0.12);
+    color: rgba(11, 31, 41, 0.78);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .pcw-info p {
+    margin: 0;
+  }
+
+  /* ---------- Slider ---------- */
+
+  .pcw-slider-shell {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    gap: 0.5rem;
+    position: relative;
+    padding-top: 1.8rem;
   }
 
-  .pcw-slider-value {
-    font-size: 2.3rem;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-
-  .pcw-slider-delta {
-    font-size: 0.95rem;
-    color: rgba(241, 245, 249, 0.82);
-  }
-
-  .pcw-slider input[type="range"] {
+  .pcw-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 10px;
+    height: 14px;
     border-radius: 999px;
-    background: var(--pcw-slider-track, linear-gradient(90deg, #16a34a, #dc2626));
-    outline: none;
+    border: 1px solid rgba(11, 31, 41, 0.18);
+    background: linear-gradient(
+      90deg,
+      rgba(15, 157, 88, 0.65) 0%,
+      rgba(15, 157, 88, 0.65) 50%,
+      rgba(192, 57, 43, 0.45) 50%,
+      rgba(192, 57, 43, 0.45) 100%
+    );
+    box-shadow: inset 0 2px 4px rgba(5, 31, 27, 0.12);
     cursor: pointer;
-    transition: background 180ms ease;
+    outline: none;
+    transition: box-shadow 160ms ease;
   }
 
-  .pcw-slider input[type="range"]::-webkit-slider-runnable-track {
-    height: 10px;
-    border-radius: inherit;
-    background: transparent;
+  .pcw-slider:hover {
+    box-shadow: inset 0 2px 6px rgba(5, 31, 27, 0.2);
   }
 
-  .pcw-slider input[type="range"]::-webkit-slider-thumb {
+  .pcw-slider:focus {
+    outline: 3px solid rgba(15, 157, 88, 0.35);
+    outline-offset: 4px;
+  }
+
+  .pcw-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    background: var(--pcw-thumb-color, #f8fafc);
-    border: 3px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.5);
-    margin-top: -6px;
-    transition: transform 120ms ease, box-shadow 120ms ease;
+    border: 3px solid #ffffff;
+    background: var(--pcw-thumb-bg, linear-gradient(180deg, #0f9d58 0%, #0c7b44 100%));
+    box-shadow: 0 6px 10px rgba(12, 38, 29, 0.25);
+    transition: transform 120ms ease;
   }
 
-  .pcw-slider input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.08);
-    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.55);
+  .pcw-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.05);
   }
 
-  .pcw-slider input[type="range"]::-moz-range-track {
-    height: 10px;
-    border-radius: 999px;
-    background: var(--pcw-slider-track, linear-gradient(90deg, #16a34a, #dc2626));
-  }
-
-  .pcw-slider input[type="range"]::-moz-range-progress {
-    height: 10px;
-    border-radius: 999px;
-    background: var(--pcw-slider-track, linear-gradient(90deg, #16a34a, #dc2626));
-  }
-
-  .pcw-slider input[type="range"]::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
+  .pcw-slider::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    background: var(--pcw-thumb-color, #f8fafc);
-    border: 3px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.5);
-    transition: transform 120ms ease, box-shadow 120ms ease;
+    border: 3px solid #ffffff;
+    background: var(--pcw-thumb-bg, linear-gradient(180deg, #0f9d58 0%, #0c7b44 100%));
+    box-shadow: 0 6px 10px rgba(12, 38, 29, 0.25);
+    transition: transform 120ms ease;
+  }
+
+  .pcw-slider::-moz-range-thumb:hover {
+    transform: scale(1.05);
+  }
+
+  .pcw-slider-indicator {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--pcw-indicator-bg, rgba(11, 31, 41, 0.85));
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: left 120ms ease;
   }
 
   .pcw-slider-scale {
     display: flex;
     justify-content: space-between;
-    font-size: 0.72rem;
-    letter-spacing: 0.18em;
+    font-size: 0.8rem;
+    color: rgba(11, 31, 41, 0.6);
     text-transform: uppercase;
-    color: rgba(241, 245, 249, 0.7);
+    letter-spacing: 0.05em;
   }
 
-  .pcw-metrics {
+  /* ---------- Stats grid ---------- */
+
+  .pcw-stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
-  .pcw-metric {
-    background: rgba(15, 23, 42, 0.28);
-    border-radius: 18px;
-    padding: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    backdrop-filter: blur(12px);
+  .pcw-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(11, 31, 41, 0.08);
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(3px);
   }
 
-  .pcw-metric h4 {
-    margin: 0 0 6px 0;
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
+  .pcw-stat-label {
+    font-size: 0.85rem;
+    color: rgba(11, 31, 41, 0.65);
     text-transform: uppercase;
-    color: rgba(241, 245, 249, 0.7);
+    letter-spacing: 0.06em;
   }
 
-  .pcw-metric p {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
+  .pcw-stat-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: rgba(11, 31, 41, 0.9);
   }
+
+  /* ---------- Footnote ---------- */
 
   .pcw-footnote {
-    margin-top: 16px;
+    margin-top: 12px;
     font-size: 0.75rem;
     text-align: center;
-    color: rgba(241, 245, 249, 0.75);
+    color: rgba(11, 31, 41, 0.55);
   }
 
   .pcw-footnote--success {
-    color: rgba(190, 242, 100, 0.92);
+    color: rgba(15, 130, 70, 0.9);
   }
 
   .pcw-footnote--error {
-    color: rgba(254, 202, 202, 0.95);
+    color: rgba(192, 57, 43, 0.95);
+  }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width: 640px) {
+    .pcw-root {
+      padding: 2rem 1.4rem;
+    }
+
+    .pcw-stat-value {
+      font-size: 1.18rem;
+    }
   }
 `;
+
+/* ---------------------------------------------------------------------------
+ * Helpers – style injection, theming, colour math
+ * -------------------------------------------------------------------------*/
 
 function injectStyles(): void {
   if (typeof document === "undefined") {
@@ -284,6 +335,24 @@ function applyTheme(target: HTMLElement, theme: Record<string, unknown> | null |
 }
 
 function getThemeColor(
+  theme: Record<string, unknown> | null | undefined,
+  keys: string[],
+  fallback: string
+): string {
+  if (!theme) {
+    return fallback;
+  }
+  for (const key of keys) {
+    const value = theme[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+  return fallback;
+}
+
+/** Read a string value from the theme JSON, trying multiple key aliases. */
+function getThemeString(
   theme: Record<string, unknown> | null | undefined,
   keys: string[],
   fallback: string
@@ -357,6 +426,36 @@ function parseColorToRgb(color: string): RGBTuple | null {
     return [Math.round(r), Math.round(g), Math.round(b)];
   }
 
+  // HSL / HSLA support: hsl(120, 50%, 80%) or hsla(120, 50%, 80%, 0.5)
+  const hslMatch = trimmed.match(
+    /^hsla?\(\s*([0-9.]+)\s*,\s*([0-9.]+)%\s*,\s*([0-9.]+)%(?:\s*,\s*([0-9.]+))?\s*\)$/i
+  );
+  if (hslMatch) {
+    const h = parseFloat(hslMatch[1]) / 360;
+    const s = parseFloat(hslMatch[2]) / 100;
+    const l = parseFloat(hslMatch[3]) / 100;
+    const hue2rgb = (p: number, q: number, t: number): number => {
+      let tt = t;
+      if (tt < 0) tt += 1;
+      if (tt > 1) tt -= 1;
+      if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+      if (tt < 1 / 2) return q;
+      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+      return p;
+    };
+    let rr: number, gg: number, bb: number;
+    if (s === 0) {
+      rr = gg = bb = l;
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      rr = hue2rgb(p, q, h + 1 / 3);
+      gg = hue2rgb(p, q, h);
+      bb = hue2rgb(p, q, h - 1 / 3);
+    }
+    return [Math.round(rr * 255), Math.round(gg * 255), Math.round(bb * 255)];
+  }
+
   return null;
 }
 
@@ -373,6 +472,10 @@ function mixColors(colorA: string, colorB: string, ratio: number): string {
   mixed[2] = Math.round(a[2] + (b[2] - a[2]) * normalized);
   return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
 }
+
+/* ---------------------------------------------------------------------------
+ * Container & option resolution
+ * -------------------------------------------------------------------------*/
 
 function resolveContainer(container: string | HTMLElement): HTMLElement {
   if (typeof document === "undefined") {
@@ -472,6 +575,10 @@ function normalizeOptions(options: InitOptions): NormalizedOptions {
   };
 }
 
+/* ---------------------------------------------------------------------------
+ * Maths & formatting
+ * -------------------------------------------------------------------------*/
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -516,10 +623,78 @@ function interpolateMetrics(config: WidgetConfig, sliderValue: number): Interpol
   };
 }
 
-function formatDelay(minutes: number): string {
-  const rounded = Math.round(minutes);
-  const sign = rounded > 0 ? "+" : "";
-  return `${sign}${rounded} min`;
+/** Format an absolute duration in minutes into a readable string, e.g. "2 hours 15 min". */
+function formatDuration(minutes: number): string {
+  const totalMinutes = Math.max(0, Math.round(Math.abs(minutes)));
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (hours > 0) {
+    parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+  }
+  if (remainingMinutes > 0) {
+    parts.push(`${remainingMinutes} min`);
+  }
+  if (parts.length === 0) {
+    return "0 min";
+  }
+  return parts.join(" ");
+}
+
+/** Format a signed delta in minutes, e.g. "+15 min" or "-1 hour 5 min". */
+function formatAddedMinutes(minutesDelta: number): string {
+  const rounded = Math.round(minutesDelta);
+  if (rounded === 0) {
+    return "+0 min";
+  }
+  const sign = rounded > 0 ? "+" : "\u2212";
+  return `${sign}${formatDuration(Math.abs(rounded))}`;
+}
+
+/**
+ * Format a full arrival time string. If the config provides a default arrival
+ * datetime we offset it by the delay and show e.g. "14:35 (+6 min)".
+ * When no baseline arrival is available we fall back to just the delta.
+ */
+function formatArrivalTime(
+  defaultArrivalDatetime: string | null | undefined,
+  delayMinutes: number
+): string {
+  if (defaultArrivalDatetime) {
+    const baseDate = new Date(defaultArrivalDatetime);
+    if (!Number.isNaN(baseDate.getTime())) {
+      const adjusted = new Date(baseDate.getTime() + delayMinutes * 60_000);
+      const hh = String(adjusted.getHours()).padStart(2, "0");
+      const mm = String(adjusted.getMinutes()).padStart(2, "0");
+      const delta = formatAddedMinutes(delayMinutes);
+      return `${hh}:${mm} (${delta})`;
+    }
+  }
+  // Fallback when no baseline arrival is known
+  return formatAddedMinutes(delayMinutes);
+}
+
+/**
+ * Format emissions showing the total amount and a parenthetical delta vs
+ * standard so that the end user sees both absolute and relative impact,
+ * e.g. "124 kg CO₂ (saves 18 kg)" or "142 kg CO₂ (+0 kg)".
+ */
+function formatEmissionsWithDelta(
+  currentEmissions: number,
+  standardEmissions: number
+): string {
+  const total = Math.round(currentEmissions);
+  const delta = standardEmissions - currentEmissions;
+  const absDelta = Math.abs(Math.round(delta));
+  let suffix: string;
+  if (absDelta === 0) {
+    suffix = "(+0 kg)";
+  } else if (delta > 0) {
+    suffix = `(saves ${absDelta} kg)`;
+  } else {
+    suffix = `(+${absDelta} kg)`;
+  }
+  return `${total} kg CO\u2082 ${suffix}`;
 }
 
 function formatNumber(value: number, fractionDigits = 1): string {
@@ -532,6 +707,10 @@ function formatNumber(value: number, fractionDigits = 1): string {
 function renderError(target: HTMLElement, message: string): void {
   target.innerHTML = `<div class="pcw-root"><div class="pcw-footnote pcw-footnote--error">${message}</div></div>`;
 }
+
+/* ---------------------------------------------------------------------------
+ * Networking
+ * -------------------------------------------------------------------------*/
 
 type InitResult = {
   destroy: () => void;
@@ -577,26 +756,42 @@ async function postIntent(
   return response.json();
 }
 
-function createMetric(title: string, initialValue: string): { wrapper: HTMLElement; value: HTMLParagraphElement } {
+/* ---------------------------------------------------------------------------
+ * DOM helpers
+ * -------------------------------------------------------------------------*/
+
+/** Create a stat card (label + value) matching mood-widget look. */
+function createStat(
+  label: string,
+  initialValue: string
+): { wrapper: HTMLElement; value: HTMLSpanElement } {
   const wrapper = document.createElement("div");
-  wrapper.className = "pcw-metric";
+  wrapper.className = "pcw-stat";
 
-  const heading = document.createElement("h4");
-  heading.textContent = title;
-  wrapper.appendChild(heading);
+  const labelEl = document.createElement("span");
+  labelEl.className = "pcw-stat-label";
+  labelEl.textContent = label;
+  wrapper.appendChild(labelEl);
 
-  const valueEl = document.createElement("p");
+  const valueEl = document.createElement("span");
+  valueEl.className = "pcw-stat-value";
   valueEl.textContent = initialValue;
   wrapper.appendChild(valueEl);
 
   return { wrapper, value: valueEl };
 }
 
+/* ---------------------------------------------------------------------------
+ * Mount – builds the widget DOM tree and wires up interactivity.
+ * Layout follows the MoodWidget pattern: header with info toggle,
+ * slider with floating indicator, three stat cards, and a sync footnote.
+ * -------------------------------------------------------------------------*/
 async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
   injectStyles();
 
   const { container, apiBaseUrl, externalTripId, onIntentCreated } = options;
-  container.innerHTML = "<div class=\"pcw-root\">Loading widget...</div>";
+  container.innerHTML =
+    '<div class="pcw-root" style="padding:2rem;color:rgba(11,31,41,0.7)">Loading widget\u2026</div>';
 
   let destroyed = false;
   let pendingTimeout: number | null = null;
@@ -614,57 +809,185 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       return { destroy: teardown, setSliderValue: () => undefined };
     }
 
-    const root = document.createElement("div");
-    root.className = "pcw-root";
-    applyTheme(root, config.theme);
-
+    /* ---- Resolve palette from theme ---- */
     const palette = {
-      slow: getThemeColor(config.theme, ["slow_color", "slowColor", "accent_slow", "ecoColor"], "#22c55e"),
-      fast: getThemeColor(config.theme, ["fast_color", "fastColor", "accent_fast", "rushColor"], "#ef4444"),
-      background: getThemeColor(
+      // Slider track colours (the filled/unfilled portions of the range input)
+      sliderSlow: getThemeColor(
         config.theme,
-        ["background_color", "backgroundColor", "cardBackground"],
-        "#0f172a"
+        ["slider_slow_color", "sliderSlowColor", "slow_color", "slowColor", "accent_slow", "ecoColor"],
+        "#0f9d58"
       ),
-      text: getThemeColor(config.theme, ["font_color", "fontColor", "textColor"], "#f8fafc"),
-      thumb: getThemeColor(config.theme, ["slider_dot_color", "sliderDotColor", "thumbColor"], "#f8fafc"),
-      border: getThemeColor(config.theme, ["border_color", "borderColor", "strokeColor"], "rgba(148, 163, 184, 0.25)"),
+      sliderFast: getThemeColor(
+        config.theme,
+        ["slider_fast_color", "sliderFastColor", "fast_color", "fastColor", "accent_fast", "rushColor"],
+        "#c0392b"
+      ),
+      // Background card gradient hue endpoints (HSL colour strings)
+      bgSlow: getThemeColor(
+        config.theme,
+        ["background_hue_slow_color", "backgroundHueSlowColor"],
+        "hsl(140, 82%, 92%)"
+      ),
+      bgFast: getThemeColor(
+        config.theme,
+        ["background_hue_fast_color", "backgroundHueFastColor"],
+        "hsl(0, 82%, 92%)"
+      ),
+      text: getThemeColor(
+        config.theme,
+        ["font_color", "fontColor", "textColor"],
+        "#0b1f29"
+      ),
+      border: getThemeColor(
+        config.theme,
+        ["border_color", "borderColor", "strokeColor"],
+        "rgba(12, 59, 46, 0.12)"
+      ),
+      thumbColor: getThemeColor(
+        config.theme,
+        ["slider_dot_color", "sliderDotColor", "thumbColor"],
+        ""
+      ),
     };
+
     const rounding = getThemeNumber(
       config.theme,
       ["rounding_px", "rounding", "roundingPx", "border_radius"],
       24
     );
 
-    root.style.setProperty("--pcw-slow-color", palette.slow);
-    root.style.setProperty("--pcw-fast-color", palette.fast);
+    const borderWidth = getThemeNumber(
+      config.theme,
+      ["border_width", "borderWidth"],
+      1
+    );
+
+    const fontFamily = getThemeString(
+      config.theme,
+      ["font_family", "fontFamily"],
+      ""
+    );
+
+    const baseFontSize = getThemeNumber(
+      config.theme,
+      ["font_size", "fontSize", "base_font_size"],
+      16
+    );
+
+    const widgetWidth = getThemeString(
+      config.theme,
+      ["widget_width", "widgetWidth"],
+      ""
+    );
+
+    /* ---- Resolve customisable labels from theme ---- */
+    const labels = {
+      sliderLabel: getThemeString(
+        config.theme,
+        ["slider_label", "sliderLabel"],
+        "Vote on the trip speed"
+      ),
+      scaleSlow: getThemeString(
+        config.theme,
+        ["scale_label_slow", "scaleLabelSlow"],
+        "Calmer seas"
+      ),
+      scaleFast: getThemeString(
+        config.theme,
+        ["scale_label_fast", "scaleLabelFast"],
+        "Arrive sooner"
+      ),
+      infoText: getThemeString(
+        config.theme,
+        ["info_text", "infoText"],
+        "Drag the slider to vote on how fast the ferry should sail. " +
+          "Slower speeds add travel time but cut CO\u2082 emissions. " +
+          "Faster speeds do the opposite. Fuel use climbs quickly with " +
+          "speed: pushing the pace can make emissions rise fast."
+      ),
+      moodSlow: getThemeString(
+        config.theme,
+        ["mood_slow_text", "moodSlowText"],
+        "Plenty of time"
+      ),
+      moodStandard: getThemeString(
+        config.theme,
+        ["mood_standard_text", "moodStandardText"],
+        "Balanced"
+      ),
+      moodFast: getThemeString(
+        config.theme,
+        ["mood_fast_text", "moodFastText"],
+        "Racing"
+      ),
+    };
+
+    /* ---- Root element ---- */
+    const root = document.createElement("article");
+    root.className = "pcw-root";
+    applyTheme(root, config.theme);
     root.style.setProperty("--pcw-text", palette.text);
-    root.style.setProperty("--pcw-thumb-color", palette.thumb);
     root.style.setProperty("--pcw-border", palette.border);
     root.style.setProperty("--pcw-rounding", `${rounding}px`);
+    root.style.setProperty("--pcw-border-width", `${borderWidth}px`);
+    root.style.setProperty("--pcw-base-font-size", `${baseFontSize}px`);
+    if (fontFamily) {
+      root.style.setProperty("--pcw-font-family", fontFamily);
+    }
+    if (widgetWidth) {
+      root.style.setProperty("--pcw-width", widgetWidth);
+    }
     root.style.color = palette.text;
+    if (palette.thumbColor) {
+      root.style.setProperty("--pcw-thumb-bg", palette.thumbColor);
+    }
 
-    const sliderSection = document.createElement("div");
-    sliderSection.className = "pcw-slider";
+    /* ---- Control section ---- */
+    const control = document.createElement("section");
+    control.className = "pcw-control";
 
-    const sliderTop = document.createElement("div");
-    sliderTop.className = "pcw-slider-top";
+    // Header row: label + info toggle button
+    const header = document.createElement("div");
+    header.className = "pcw-control-header";
 
-    const sliderLabel = document.createElement("span");
+    const sliderLabel = document.createElement("label");
     sliderLabel.className = "pcw-slider-label";
-    sliderLabel.textContent = "Adjust your pace";
-    sliderTop.appendChild(sliderLabel);
+    sliderLabel.textContent = labels.sliderLabel;
+    header.appendChild(sliderLabel);
 
-    const sliderValueGroup = document.createElement("div");
-    sliderValueGroup.className = "pcw-slider-value-group";
-    const sliderValueDisplay = document.createElement("span");
-    sliderValueDisplay.className = "pcw-slider-value";
-    const sliderDelta = document.createElement("span");
-    sliderDelta.className = "pcw-slider-delta";
-    sliderValueGroup.appendChild(sliderValueDisplay);
-    sliderValueGroup.appendChild(sliderDelta);
-    sliderTop.appendChild(sliderValueGroup);
-    sliderSection.appendChild(sliderTop);
+    const infoToggle = document.createElement("button");
+    infoToggle.type = "button";
+    infoToggle.className = "pcw-info-toggle";
+    infoToggle.setAttribute("aria-expanded", "false");
+    infoToggle.setAttribute("aria-label", "How the trip speed slider works");
+    infoToggle.textContent = "?";
+    header.appendChild(infoToggle);
+
+    control.appendChild(header);
+
+    // Collapsible info panel (hidden by default)
+    const infoPanel = document.createElement("div");
+    infoPanel.className = "pcw-info";
+    infoPanel.style.display = "none";
+    const infoParagraph = document.createElement("p");
+    infoParagraph.textContent = labels.infoText;
+    infoPanel.appendChild(infoParagraph);
+    control.appendChild(infoPanel);
+
+    infoToggle.addEventListener("click", () => {
+      const expanded = infoPanel.style.display !== "none";
+      infoPanel.style.display = expanded ? "none" : "block";
+      infoToggle.setAttribute("aria-expanded", String(!expanded));
+    });
+
+    // Slider shell (indicator + range input + scale labels)
+    const sliderShell = document.createElement("div");
+    sliderShell.className = "pcw-slider-shell";
+
+    const indicator = document.createElement("div");
+    indicator.className = "pcw-slider-indicator";
+    indicator.textContent = "+0 min";
+    sliderShell.appendChild(indicator);
 
     const slider = document.createElement("input");
     slider.type = "range";
@@ -672,33 +995,46 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
     slider.max = "100";
     slider.step = "1";
     slider.value = String(clamp(config.default_speed_percentage ?? 50, 0, 100));
+    slider.className = "pcw-slider";
     slider.setAttribute("aria-label", "Speed preference slider");
-    sliderSection.appendChild(slider);
+    sliderShell.appendChild(slider);
 
     const sliderScale = document.createElement("div");
     sliderScale.className = "pcw-slider-scale";
-    sliderScale.innerHTML = "<span>Slow</span><span>Standard</span><span>Fast</span>";
-    sliderSection.appendChild(sliderScale);
+    const scaleSlow = document.createElement("span");
+    scaleSlow.textContent = labels.scaleSlow;
+    const scaleFast = document.createElement("span");
+    scaleFast.textContent = labels.scaleFast;
+    sliderScale.appendChild(scaleSlow);
+    sliderScale.appendChild(scaleFast);
+    sliderShell.appendChild(sliderScale);
 
-    const metrics = document.createElement("div");
-    metrics.className = "pcw-metrics";
-    const speedMetric = createMetric("Speed", "-");
-    const delayMetric = createMetric("Arrival difference", "-");
-    const emissionsMetric = createMetric("Estimated emissions", "-");
-    metrics.appendChild(speedMetric.wrapper);
-    metrics.appendChild(delayMetric.wrapper);
-    metrics.appendChild(emissionsMetric.wrapper);
+    control.appendChild(sliderShell);
+    root.appendChild(control);
 
+    /* ---- Stats section ---- */
+    const stats = document.createElement("section");
+    stats.className = "pcw-stats";
+
+    const moodStat = createStat("Mood", "-");
+    const arrivalStat = createStat("Estimated arrival", "-");
+    const impactStat = createStat("Emissions", "-");
+
+    stats.appendChild(moodStat.wrapper);
+    stats.appendChild(arrivalStat.wrapper);
+    stats.appendChild(impactStat.wrapper);
+    root.appendChild(stats);
+
+    /* ---- Footnote ---- */
     const footnote = document.createElement("div");
     footnote.className = "pcw-footnote";
     footnote.textContent = "Move the slider to save your preference.";
-
-    root.appendChild(sliderSection);
-    root.appendChild(metrics);
     root.appendChild(footnote);
+
     container.innerHTML = "";
     container.appendChild(root);
 
+    /* ---- State ---- */
     const intentState: IntentState = { lastSignature: null };
     let posting = false;
 
@@ -715,35 +1051,63 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       }
     };
 
+    /* ---- UI update (runs on every slider change) ---- */
     const updateUi = (rawSliderValue: number) => {
       const metricsData = interpolateMetrics(config, rawSliderValue);
       const normalized = metricsData.sliderValue;
-      const blended = mixColors(palette.slow, palette.fast, normalized);
-      const gradient = `linear-gradient(135deg, ${mixColors(
-        palette.slow,
-        palette.background,
-        0.35
-      )} 0%, ${blended} 55%, ${mixColors(palette.fast, palette.background, 0.3)} 100%)`;
-      root.style.setProperty("--pcw-dynamic-background", gradient);
-      const sliderGradient = `linear-gradient(90deg, ${palette.slow} 0%, ${blended} ${Math.round(
-        normalized * 100
-      )}%, ${palette.fast} 100%)`;
-      root.style.setProperty("--pcw-slider-track", sliderGradient);
-      slider.style.background = sliderGradient;
-      sliderValueDisplay.textContent = `${Math.round(normalized * 100)}%`;
-      const deltaAbs = Math.abs(metricsData.deltaPctFromStandard);
-      sliderDelta.textContent =
-        metricsData.deltaPctFromStandard >= 0
-          ? `≈ ${formatNumber(deltaAbs, 1)}% faster vs standard`
-          : `≈ ${formatNumber(deltaAbs, 1)}% slower vs standard`;
-      speedMetric.value.textContent = `${formatNumber(metricsData.speed, 1)} kn`;
-      delayMetric.value.textContent = formatDelay(metricsData.delayMinutes);
-      emissionsMetric.value.textContent = `${formatNumber(metricsData.emissions, 1)} kg CO2`;
+
+      // Background gradient blends between bgSlow and bgFast colours
+      const blendedBg = mixColors(palette.bgSlow, palette.bgFast, normalized);
+      root.style.background = `linear-gradient(180deg, ${blendedBg} 0%, #ffffff 100%)`;
+
+      // Mood accent colour derived from the same blend
+      const moodAccent = mixColors(palette.sliderSlow, palette.sliderFast, normalized);
+
+      // Slider track fill gradient (filled portion = slow colour, remainder = fast colour)
+      const fillPct = Math.round(normalized * 100);
+      const slowRgb = parseColorToRgb(palette.sliderSlow);
+      const fastRgb = parseColorToRgb(palette.sliderFast);
+      const slowFill = slowRgb
+        ? `rgba(${slowRgb[0]},${slowRgb[1]},${slowRgb[2]},0.65)`
+        : "rgba(15,157,88,0.65)";
+      const fastFill = fastRgb
+        ? `rgba(${fastRgb[0]},${fastRgb[1]},${fastRgb[2]},0.45)`
+        : "rgba(192,57,43,0.45)";
+      const sliderBg = `linear-gradient(90deg, ${slowFill} 0%, ${slowFill} ${fillPct}%, ${fastFill} ${fillPct}%, ${fastFill} 100%)`;
+      slider.style.background = sliderBg;
+
+      // Floating indicator above the thumb (delta only)
+      indicator.style.left = `${fillPct}%`;
+      indicator.textContent = formatAddedMinutes(metricsData.delayMinutes);
+
+      // Mood stat
+      let moodText = labels.moodStandard;
+      if (metricsData.deltaPctFromStandard < -1) {
+        moodText = labels.moodSlow;
+      } else if (metricsData.deltaPctFromStandard > 1) {
+        moodText = labels.moodFast;
+      }
+      moodStat.value.textContent = moodText;
+      moodStat.value.style.color = moodAccent;
+
+      // Arrival stat – show the actual estimated arrival time + delta
+      arrivalStat.value.textContent = formatArrivalTime(
+        config.default_arrival_datetime,
+        metricsData.delayMinutes
+      );
+
+      // Impact stat – show total emissions with delta vs standard
+      impactStat.value.textContent = formatEmissionsWithDelta(
+        metricsData.emissions,
+        config.anchors.standard.expected_emissions_kg_co2
+      );
+
       return metricsData;
     };
 
     let currentMetrics = updateUi(Number(slider.value) / 100);
 
+    /* ---- Intent submission ---- */
     const submitIntent = async () => {
       if (posting || destroyed) {
         return;
@@ -753,7 +1117,7 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
         return;
       }
       posting = true;
-      setFootnote("Syncing preference...", "info");
+      setFootnote("Syncing preference\u2026", "info");
       try {
         const response = await postIntent(apiBaseUrl, {
           voyage_id: config.id,
@@ -797,19 +1161,21 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       }, 450);
     };
 
+    /* ---- Slider event listeners ---- */
     slider.addEventListener("input", () => {
       currentMetrics = updateUi(Number(slider.value) / 100);
-      setFootnote("Syncing preference...", "info");
+      setFootnote("Syncing preference\u2026", "info");
       scheduleAutoSubmit();
     });
 
     slider.addEventListener("change", () => {
       currentMetrics = updateUi(Number(slider.value) / 100);
-      setFootnote("Syncing preference...", "info");
+      setFootnote("Syncing preference\u2026", "info");
       scheduleAutoSubmit();
     });
 
-    setFootnote("Syncing preference...", "info");
+    // Initial auto-submit for the default position
+    setFootnote("Syncing preference\u2026", "info");
     scheduleAutoSubmit();
 
     return {
@@ -818,18 +1184,25 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
         const normalized = clamp(value, 0, 1);
         slider.value = String(Math.round(normalized * 100));
         currentMetrics = updateUi(normalized);
-        setFootnote("Syncing preference...", "info");
+        setFootnote("Syncing preference\u2026", "info");
         scheduleAutoSubmit();
       },
     };
   } catch (error) {
-    renderError(container, error instanceof Error ? error.message : "Failed to load widget");
+    renderError(
+      container,
+      error instanceof Error ? error.message : "Failed to load widget"
+    );
     return {
       destroy: teardown,
       setSliderValue: () => undefined,
     };
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Public API
+ * -------------------------------------------------------------------------*/
 
 async function init(options: InitOptions): Promise<InitResult> {
   const normalized = normalizeOptions(options);
