@@ -40,6 +40,7 @@ type ChoiceIntentResponse = {
 type InitOptions = {
   container: string | HTMLElement;
   externalTripId?: string;
+  publicKey?: string;
   apiBaseUrl?: string;
   onIntentCreated?: (intent: ChoiceIntentResponse) => void;
 };
@@ -47,6 +48,7 @@ type InitOptions = {
 type NormalizedOptions = {
   container: HTMLElement;
   externalTripId: string;
+  publicKey: string;
   apiBaseUrl: string;
   onIntentCreated?: (intent: ChoiceIntentResponse) => void;
 };
@@ -398,6 +400,28 @@ function resolveTripId(options: InitOptions, container: HTMLElement): string {
   throw new Error("externalTripId is required. Pass it to init() or set data-external-trip-id on the container element.");
 }
 
+/**
+ * Resolve the operator public_key from init options or the container's
+ * data-public-key / public_key attribute. Required so that two operators
+ * with identical external_trip_ids don't collide.
+ */
+function resolvePublicKey(options: InitOptions, container: HTMLElement): string {
+  const explicit = options.publicKey?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  // Support both data-public-key (dataset) and raw public_key attribute
+  const fromDataAttr = container.dataset.publicKey?.trim();
+  if (fromDataAttr) {
+    return fromDataAttr;
+  }
+  const fromRawAttr = container.getAttribute("public_key")?.trim();
+  if (fromRawAttr) {
+    return fromRawAttr;
+  }
+  throw new Error("publicKey is required. Pass it to init() or set data-public-key on the container element.");
+}
+
 function inferApiBaseUrl(explicit?: string): string {
   if (explicit) {
     return trimTrailingSlash(explicit);
@@ -437,10 +461,12 @@ function trimTrailingSlash(value: string): string {
 function normalizeOptions(options: InitOptions): NormalizedOptions {
   const container = resolveContainer(options.container);
   const externalTripId = resolveTripId(options, container);
+  const publicKey = resolvePublicKey(options, container);
   const apiBaseUrl = inferApiBaseUrl(options.apiBaseUrl);
   return {
     container,
     externalTripId,
+    publicKey,
     apiBaseUrl,
     onIntentCreated: options.onIntentCreated,
   };
@@ -517,8 +543,8 @@ type IntentState = {
   latestIntent?: ChoiceIntentResponse;
 };
 
-async function fetchWidgetConfig(baseUrl: string, externalTripId: string): Promise<WidgetConfig> {
-  const url = `${baseUrl}/api/v1/public/widget/config?external_trip_id=${encodeURIComponent(externalTripId)}`;
+async function fetchWidgetConfig(baseUrl: string, externalTripId: string, publicKey: string): Promise<WidgetConfig> {
+  const url = `${baseUrl}/api/v1/public/widget/config?external_trip_id=${encodeURIComponent(externalTripId)}&public_key=${encodeURIComponent(publicKey)}`;
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Failed to load widget config (${response.status})`);
@@ -583,7 +609,7 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
   };
 
   try {
-    const config = await fetchWidgetConfig(apiBaseUrl, externalTripId);
+    const config = await fetchWidgetConfig(apiBaseUrl, externalTripId, options.publicKey);
     if (destroyed) {
       return { destroy: teardown, setSliderValue: () => undefined };
     }
