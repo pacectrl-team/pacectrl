@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class RouteBase(BaseModel):
@@ -14,6 +14,12 @@ class RouteBase(BaseModel):
     arrival_time: time
     route_geometry: Optional[dict] = None
     is_active: bool = True
+
+    @field_serializer("departure_time", "arrival_time")
+    @classmethod
+    def serialize_time_hhmm(cls, v: time) -> str:
+        """Always emit HH:MM (no seconds / microseconds)."""
+        return v.strftime("%H:%M")
 
 
 class RouteCreate(RouteBase):
