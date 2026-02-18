@@ -27,6 +27,17 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const baseTitle = 'PaceCtrl Portal'
+    if (view === 'home') {
+      document.title = `${baseTitle} · Home`
+    } else if (view === 'login') {
+      document.title = `${baseTitle} · Login`
+    } else if (view === 'dashboard') {
+      document.title = `${baseTitle} · Dashboard`
+    }
+  }, [view])
+
   const handleLoginSuccess = (newToken: string, newOperatorId: number | null) => {
     setToken(newToken)
     setOperatorId(newOperatorId)

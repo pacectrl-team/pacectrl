@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, Container, Stack } from '@mui/material'
 import UsersSection from '../features/users/UsersSection'
 import VoyagesSection from '../features/voyages/VoyagesSection'
@@ -24,8 +24,24 @@ export type DashboardPageProps = {
   operatorId: number | null
 }
 
+const sectionTitles: Record<DashboardSection, string> = {
+  overview: 'Overview',
+  users: 'Users',
+  operators: 'Operator',
+  voyages: 'Voyages',
+  ships: 'Ships',
+  routes: 'Routes',
+  'speed-estimates': 'Speed Estimate',
+  widgets: 'Widgets',
+}
+
 function DashboardPage({ token, operatorId }: DashboardPageProps) {
   const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
+
+  useEffect(() => {
+    const title = sectionTitles[activeSection]
+    document.title = `PaceCtrl Portal · ${title}`
+  }, [activeSection])
 
   return (
     <Box className="dashboard-section">
