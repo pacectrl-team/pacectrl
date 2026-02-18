@@ -281,11 +281,14 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreateVoyage} noValidate>
+      <Box className="section-card" component="form" onSubmit={handleCreateVoyage} noValidate>
         <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create voyage
-          </Typography>
+          <Box className="section-header">
+            <Box>
+              <h2>Create Voyage</h2>
+              <Typography variant="body2" className="subtitle">Schedule a new voyage</Typography>
+            </Box>
+          </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="External trip ID"
@@ -393,10 +396,13 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
         </Typography>
       )}
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Voyages
-        </Typography>
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Voyages</h2>
+            <Typography variant="body2" className="subtitle">All scheduled voyages</Typography>
+          </Box>
+        </Box>
         {voyagesLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading voyages...
@@ -437,10 +443,13 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       </Box>
 
       {selectedVoyage && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit voyage
-          </Typography>
+        <Box className="section-card">
+          <Box className="section-header">
+            <Box>
+              <h2>Edit Voyage</h2>
+              <Typography variant="body2" className="subtitle">Update voyage details</Typography>
+            </Box>
+          </Box>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

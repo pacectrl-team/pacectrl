@@ -151,11 +151,14 @@ function ShipsSection({ token }: ShipsSectionProps) {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreateShip} noValidate>
+      <Box className="section-card" component="form" onSubmit={handleCreateShip} noValidate>
         <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create ship
-          </Typography>
+          <Box className="section-header">
+            <Box>
+              <h2>Create Ship</h2>
+              <Typography variant="body2" className="subtitle">Register a new vessel</Typography>
+            </Box>
+          </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Name"
@@ -186,10 +189,13 @@ function ShipsSection({ token }: ShipsSectionProps) {
         </Typography>
       )}
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Ships
-        </Typography>
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Ships</h2>
+            <Typography variant="body2" className="subtitle">All registered vessels</Typography>
+          </Box>
+        </Box>
         {shipsLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading ships...
@@ -228,10 +234,13 @@ function ShipsSection({ token }: ShipsSectionProps) {
       </Box>
 
       {selectedShip && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit ship
-          </Typography>
+        <Box className="section-card">
+          <Box className="section-header">
+            <Box>
+              <h2>Edit Ship</h2>
+              <Typography variant="body2" className="subtitle">Update vessel details</Typography>
+            </Box>
+          </Box>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

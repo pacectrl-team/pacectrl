@@ -202,11 +202,14 @@ function RoutesSection({ token }: RoutesSectionProps) {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreateRoute} noValidate>
+      <Box className="section-card" component="form" onSubmit={handleCreateRoute} noValidate>
         <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create route
-          </Typography>
+          <Box className="section-header">
+            <Box>
+              <h2>Create Route</h2>
+              <Typography variant="body2" className="subtitle">Define a new shipping route</Typography>
+            </Box>
+          </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Name"
@@ -275,10 +278,13 @@ function RoutesSection({ token }: RoutesSectionProps) {
         </Typography>
       )}
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Routes
-        </Typography>
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Routes</h2>
+            <Typography variant="body2" className="subtitle">All configured shipping routes</Typography>
+          </Box>
+        </Box>
         {routesLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading routes...
@@ -317,10 +323,13 @@ function RoutesSection({ token }: RoutesSectionProps) {
       </Box>
 
       {selectedRoute && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit route
-          </Typography>
+        <Box className="section-card">
+          <Box className="section-header">
+            <Box>
+              <h2>Edit Route</h2>
+              <Typography variant="body2" className="subtitle">Update route details</Typography>
+            </Box>
+          </Box>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

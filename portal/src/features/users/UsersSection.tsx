@@ -161,11 +161,14 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreateUser} noValidate>
+      <Box className="section-card" component="form" onSubmit={handleCreateUser} noValidate>
         <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create user
-          </Typography>
+          <Box className="section-header">
+            <Box>
+              <h2>Create User</h2>
+              <Typography variant="body2" className="subtitle">Add a new user to the platform</Typography>
+            </Box>
+          </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Username"
@@ -223,10 +226,13 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
         </Typography>
       )}
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Users
-        </Typography>
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Users</h2>
+            <Typography variant="body2" className="subtitle">All registered platform users</Typography>
+          </Box>
+        </Box>
         {usersLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading users...
@@ -265,10 +271,13 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       </Box>
 
       {selectedUser && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit user
-          </Typography>
+        <Box className="section-card">
+          <Box className="section-header">
+            <Box>
+              <h2>Edit User</h2>
+              <Typography variant="body2" className="subtitle">Update user details</Typography>
+            </Box>
+          </Box>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField

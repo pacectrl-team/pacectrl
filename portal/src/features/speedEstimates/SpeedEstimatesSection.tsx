@@ -363,9 +363,13 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5" sx={{ fontWeight: 600 }}>
-        Speed Estimate
-      </Typography>
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Speed Estimates</h2>
+            <Typography variant="body2" className="subtitle">Configure speed profiles for route-ship pairs</Typography>
+          </Box>
+        </Box>
 
       <Stack spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -595,6 +599,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
           </Box>
         )}
       </Stack>
+      </Box>
     </Stack>
   )
 }
