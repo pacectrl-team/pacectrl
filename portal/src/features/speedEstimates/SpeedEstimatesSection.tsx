@@ -2,23 +2,24 @@ import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
   Stack,
   TextField,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TableContainer,
-  Paper,
   MenuItem,
 } from '@mui/material'
+import SpeedIcon from '@mui/icons-material/SpeedRounded'
+import Co2Icon from '@mui/icons-material/CloudRounded'
+import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
 import type {
   AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
   SpeedAnchorsEstimate,
   RouteSummary,
+  ShipSummary,
   SpeedEstimateAnchorsResponse,
 } from '../../types/api'
 
@@ -34,6 +35,7 @@ type SpeedEstimateEntry = {
 }
 
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
+const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 const SPEED_ESTIMATES_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/'
 
@@ -42,6 +44,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [shipId, setShipId] = useState('')
 
   const [routes, setRoutes] = useState<RouteSummary[]>([])
+  const [ships, setShips] = useState<ShipSummary[]>([])
 
   const [slowSpeedKnots, setSlowSpeedKnots] = useState('')
   const [slowEmissions, setSlowEmissions] = useState('')
@@ -80,6 +83,28 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       setRoutes(data)
     } catch {
       setError('Unable to load routes. Please try again.')
+    }
+  }
+
+  const fetchShips = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(SHIPS_URL, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load ships')
+      }
+
+      const data = (await response.json()) as ShipSummary[]
+      setShips(data)
+    } catch {
+      setError('Unable to load ships. Please try again.')
     }
   }
 
@@ -169,6 +194,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   useEffect(() => {
     void fetchRoutes()
+    void fetchShips()
 
     // Load all existing speed estimates for the table from the items array
     void fetchAllEstimates()
@@ -372,6 +398,10 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         </Box>
 
       <Stack spacing={2.5}>
+        {/* Route & Ship selection */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, color: 'text.secondary' }}>
+          Select Route & Ship
+        </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="Route"
@@ -392,111 +422,170 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
           </TextField>
           {initialShipId != null ? (
             <TextField
-              label="Ship ID"
+              label="Ship"
               variant="outlined"
+              select
               value={shipId}
               fullWidth
               disabled
-            />
+            >
+              {ships.map((s) => (
+                <MenuItem key={s.id} value={String(s.id)}>
+                  {s.name} (ID: {s.id})
+                </MenuItem>
+              ))}
+            </TextField>
           ) : (
             <TextField
-              label="Ship ID"
+              label="Ship"
               variant="outlined"
+              select
               value={shipId}
               onChange={(event) => setShipId(event.target.value)}
               fullWidth
-            />
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {ships.map((s) => (
+                <MenuItem key={s.id} value={String(s.id)}>
+                  {s.name} (ID: {s.id})
+                </MenuItem>
+              ))}
+            </TextField>
           )}
         </Stack>
 
-        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-          Slow
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField
-            label="Speed (knots)"
-            type="number"
-            variant="outlined"
-            value={slowSpeedKnots}
-            onChange={(event) => setSlowSpeedKnots(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected emissions (kg CO2)"
-            type="number"
-            variant="outlined"
-            value={slowEmissions}
-            onChange={(event) => setSlowEmissions(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected arrival Δ minutes"
-            type="number"
-            variant="outlined"
-            value={slowArrivalDelta}
-            onChange={(event) => setSlowArrivalDelta(event.target.value)}
-            fullWidth
-          />
-        </Stack>
+        <Divider />
 
-        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-          Standard
+        {/* Speed profiles */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, color: 'text.secondary' }}>
+          Speed Profiles
         </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField
-            label="Speed (knots)"
-            type="number"
-            variant="outlined"
-            value={standardSpeedKnots}
-            onChange={(event) => setStandardSpeedKnots(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected emissions (kg CO2)"
-            type="number"
-            variant="outlined"
-            value={standardEmissions}
-            onChange={(event) => setStandardEmissions(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected arrival Δ minutes"
-            type="number"
-            variant="outlined"
-            value={standardArrivalDelta}
-            onChange={(event) => setStandardArrivalDelta(event.target.value)}
-            fullWidth
-          />
-        </Stack>
 
-        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-          Fast
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField
-            label="Speed (knots)"
-            type="number"
-            variant="outlined"
-            value={fastSpeedKnots}
-            onChange={(event) => setFastSpeedKnots(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected emissions (kg CO2)"
-            type="number"
-            variant="outlined"
-            value={fastEmissions}
-            onChange={(event) => setFastEmissions(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Expected arrival Δ minutes"
-            type="number"
-            variant="outlined"
-            value={fastArrivalDelta}
-            onChange={(event) => setFastArrivalDelta(event.target.value)}
-            fullWidth
-          />
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          {/* Slow */}
+          <Card variant="outlined" sx={{ flex: 1, borderColor: '#2D6A4F', borderWidth: 2, borderRadius: '12px' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                <Chip label="Slow" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#2D6A4F', color: '#fff' }} />
+              </Stack>
+              <Stack spacing={1.5}>
+                <TextField
+                  label="Speed (knots)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={slowSpeedKnots}
+                  onChange={(event) => setSlowSpeedKnots(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="CO₂ Emissions (kg)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={slowEmissions}
+                  onChange={(event) => setSlowEmissions(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="Arrival Δ (minutes)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={slowArrivalDelta}
+                  onChange={(event) => setSlowArrivalDelta(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {/* Standard */}
+          <Card variant="outlined" sx={{ flex: 1, borderColor: '#0984E3', borderWidth: 2, borderRadius: '12px' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                <Chip label="Standard" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#0984E3', color: '#fff' }} />
+              </Stack>
+              <Stack spacing={1.5}>
+                <TextField
+                  label="Speed (knots)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={standardSpeedKnots}
+                  onChange={(event) => setStandardSpeedKnots(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="CO₂ Emissions (kg)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={standardEmissions}
+                  onChange={(event) => setStandardEmissions(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="Arrival Δ (minutes)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={standardArrivalDelta}
+                  onChange={(event) => setStandardArrivalDelta(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {/* Fast */}
+          <Card variant="outlined" sx={{ flex: 1, borderColor: '#E17055', borderWidth: 2, borderRadius: '12px' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                <Chip label="Fast" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#E17055', color: '#fff' }} />
+              </Stack>
+              <Stack spacing={1.5}>
+                <TextField
+                  label="Speed (knots)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={fastSpeedKnots}
+                  onChange={(event) => setFastSpeedKnots(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="CO₂ Emissions (kg)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={fastEmissions}
+                  onChange={(event) => setFastEmissions(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
+                />
+                <TextField
+                  label="Arrival Δ (minutes)"
+                  type="number"
+                  variant="outlined"
+                  size="small"
+                  value={fastArrivalDelta}
+                  onChange={(event) => setFastArrivalDelta(event.target.value)}
+                  fullWidth
+                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
         </Stack>
 
         {error && (
@@ -529,73 +618,119 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
           </Button>
         </Stack>
 
+        {/* ─── Saved Estimates List ─── */}
         {entries.length > 0 && (
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 500, mt: 3, mb: 1.5 }}>
-              Speed estimates
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="h6" sx={{ fontWeight: 700, mt: 2, mb: 2 }}>
+              Saved Estimates
             </Typography>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Route ID</TableCell>
-                    <TableCell>Ship ID</TableCell>
-                    <TableCell align="right">Slow (kn)</TableCell>
-                    <TableCell align="right">Slow CO2 (kg)</TableCell>
-                    <TableCell align="right">Slow Δ (min)</TableCell>
-                    <TableCell align="right">Std (kn)</TableCell>
-                    <TableCell align="right">Std CO2 (kg)</TableCell>
-                    <TableCell align="right">Std Δ (min)</TableCell>
-                    <TableCell align="right">Fast (kn)</TableCell>
-                    <TableCell align="right">Fast CO2 (kg)</TableCell>
-                    <TableCell align="right">Fast Δ (min)</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(initialShipId != null
-                    ? entries.filter((entry) => entry.shipId === initialShipId)
-                    : entries
-                  ).map((entry) => (
-                    <TableRow
-                      key={`${entry.routeId}-${entry.shipId}`}
-                      hover
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => handleSelectEntry(entry)}
-                    >
-                      <TableCell>{entry.routeId}</TableCell>
-                      <TableCell>{entry.shipId}</TableCell>
-                      <TableCell align="right">
-                        {entry.data.slow.speed_knots}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.slow.expected_emissions_kg_co2}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.slow.expected_arrival_delta_minutes}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.standard.speed_knots}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.standard.expected_emissions_kg_co2}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.standard.expected_arrival_delta_minutes}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.fast.speed_knots}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.fast.expected_emissions_kg_co2}
-                      </TableCell>
-                      <TableCell align="right">
-                        {entry.data.fast.expected_arrival_delta_minutes}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Stack spacing={1.5}>
+              {(initialShipId != null
+                ? entries.filter((entry) => entry.shipId === initialShipId)
+                : entries
+              ).map((entry) => {
+                const routeName = routes.find((r) => r.id === entry.routeId)?.name ?? `Route ${entry.routeId}`
+                const shipName = ships.find((s) => s.id === entry.shipId)?.name ?? `Ship ${entry.shipId}`
+                return (
+                  <Card
+                    key={`${entry.routeId}-${entry.shipId}`}
+                    variant="outlined"
+                    sx={{
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      '&:hover': { borderColor: '#27AE60', boxShadow: '0 2px 12px rgba(39,174,96,0.12)' },
+                    }}
+                    onClick={() => handleSelectEntry(entry)}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      {/* Header */}
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 14 }}>
+                          {routeName}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>
+                          ×
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 14 }}>
+                          {shipName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.disabled', ml: 'auto !important', fontSize: 11 }}>
+                          Click to edit
+                        </Typography>
+                      </Stack>
+
+                      {/* Speed profile pills */}
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                        {/* Slow */}
+                        <Box sx={{ flex: 1, background: '#E8F5E9', borderRadius: '8px', px: 1.5, py: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#2D6A4F', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Slow
+                          </Typography>
+                          <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Speed</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.slow.speed_knots} kn</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>CO₂</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.slow.expected_emissions_kg_co2} kg</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Arrival Δ</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.slow.expected_arrival_delta_minutes} min</Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+
+                        {/* Standard */}
+                        <Box sx={{ flex: 1, background: '#E3F2FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#0984E3', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Standard
+                          </Typography>
+                          <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Speed</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.standard.speed_knots} kn</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>CO₂</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.standard.expected_emissions_kg_co2} kg</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Arrival Δ</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.standard.expected_arrival_delta_minutes} min</Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+
+                        {/* Fast */}
+                        <Box sx={{ flex: 1, background: '#FDECEA', borderRadius: '8px', px: 1.5, py: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#E17055', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Fast
+                          </Typography>
+                          <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Speed</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.fast.speed_knots} kn</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>CO₂</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.fast.expected_emissions_kg_co2} kg</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 10 }}>Arrival Δ</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 13 }}>{entry.data.fast.expected_arrival_delta_minutes} min</Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </Stack>
           </Box>
         )}
       </Stack>
