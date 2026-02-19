@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/DashboardRounded'
 import PeopleIcon from '@mui/icons-material/PeopleRounded'
 import BusinessIcon from '@mui/icons-material/BusinessRounded'
@@ -8,9 +8,7 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoatRounded'
 import RouteIcon from '@mui/icons-material/RouteRounded'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import WidgetsIcon from '@mui/icons-material/WidgetsRounded'
-import LogoutIcon from '@mui/icons-material/LogoutRounded'
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNoneRounded'
-import SearchIcon from '@mui/icons-material/SearchRounded'
+
 import UsersSection from '../features/users/UsersSection'
 import VoyagesSection from '../features/voyages/VoyagesSection'
 import OverviewSection from '../features/overview/OverviewSection'
@@ -124,24 +122,9 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
             </Box>
           </Box>
           <Box className="header-right">
-            <Tooltip title="Search">
-              <IconButton size="small" className="header-icon-btn">
-                <SearchIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Notifications">
-              <IconButton size="small" className="header-icon-btn">
-                <NotificationsNoneIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Logout">
-              <IconButton size="small" className="header-icon-btn" onClick={onLogout}>
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Box className="header-avatar">
-              <Typography sx={{ fontSize: 14, fontWeight: 700 }}>U</Typography>
-            </Box>
+            <Button size="small" variant="outlined" color="error" onClick={onLogout} sx={{ textTransform: 'none' }}>
+              Logout
+            </Button>
           </Box>
         </Box>
 

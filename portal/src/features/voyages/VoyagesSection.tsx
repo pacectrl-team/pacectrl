@@ -299,13 +299,17 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
               required
             />
             <TextField
-              label="Status (e.g. planned)"
+              label="Status"
               variant="outlined"
+              select
               value={createVoyageStatus}
               onChange={(event) => setCreateVoyageStatus(event.target.value)}
               fullWidth
               required
-            />
+            >
+              <MenuItem value="planned">Planned</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+            </TextField>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
@@ -462,10 +466,14 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
               <TextField
                 label="Status"
                 variant="outlined"
+                select
                 value={editVoyageStatus}
                 onChange={(event) => setEditVoyageStatus(event.target.value)}
                 fullWidth
-              />
+              >
+                <MenuItem value="planned">Planned</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </TextField>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
