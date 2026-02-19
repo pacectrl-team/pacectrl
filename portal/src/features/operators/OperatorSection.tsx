@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, Chip, Stack, Typography } from '@mui/material'
+import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
+import BusinessIcon from '@mui/icons-material/BusinessRounded'
 import type { OperatorSummary } from '../../types/api'
 
 const OPERATOR_URL_BASE =
@@ -68,18 +69,40 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
             </Typography>
           )}
           {!loading && !error && operator && (
-            <Stack spacing={1.5}>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                Your Operator
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {operator.name}
-              </Typography>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Box
+                  sx={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #27AE60, #6BCB77)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(39, 174, 96, 0.3)',
+                  }}
+                >
+                  <BusinessIcon sx={{ fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    Your Operator
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                    {operator.name}
+                  </Typography>
+                </Box>
+              </Stack>
               <Chip
-                label={`Your operator ID: ${operator.id}`}
-                color="success"
-                variant="outlined"
-                sx={{ alignSelf: 'flex-start' }}
+                label={`Operator ID: ${operator.id}`}
+                sx={{
+                  alignSelf: 'flex-start',
+                  background: 'linear-gradient(135deg, #27AE60, #6BCB77)',
+                  color: '#fff',
+                  fontWeight: 600,
+                }}
               />
               <Typography variant="body2" color="text.secondary">
                 This operator is linked to your account and used for

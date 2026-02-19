@@ -27,6 +27,17 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const baseTitle = 'PaceCtrl Portal'
+    if (view === 'home') {
+      document.title = `${baseTitle} · Home`
+    } else if (view === 'login') {
+      document.title = `${baseTitle} · Login`
+    } else if (view === 'dashboard') {
+      document.title = `${baseTitle} · Dashboard`
+    }
+  }, [view])
+
   const handleLoginSuccess = (newToken: string, newOperatorId: number | null) => {
     setToken(newToken)
     setOperatorId(newOperatorId)
@@ -55,42 +66,85 @@ function App() {
     setView('login')
   }
 
+  // Dashboard has its own sidebar + header — no AppBar needed
+  if (view === 'dashboard' && token) {
+    return (
+      <DashboardPage
+        token={token}
+        operatorId={operatorId}
+        onLogout={handleLogout}
+      />
+    )
+  }
+
   return (
     <Box className="app-root">
-      <AppBar position="absolute" color="transparent" elevation={0}>
-        <Toolbar sx={{ px: { xs: 2, sm: 4 }, py: 2 }}>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 0.5, cursor: 'pointer' }}
+      <AppBar
+        position="absolute"
+        elevation={0}
+        sx={{
+          background: 'rgba(27, 67, 50, 0.3)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        <Toolbar sx={{ px: { xs: 2, sm: 4 }, py: 1.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexGrow: 1,
+              cursor: 'pointer',
+            }}
             onClick={handleLogoClick}
           >
-            PaceCtrl Portal
-          </Typography>
-          <Stack direction="row" spacing={{ xs: 1, sm: 3 }}>
-            {view !== 'dashboard' && (
-              <Button
-                color="inherit"
-                onClick={handleLoginClick}
-                sx={{ textTransform: 'none' }}
-              >
-                Login
-              </Button>
-            )}
-            {view === 'dashboard' && token && (
-              <Button
-                color="inherit"
-                onClick={handleLogout}
-                sx={{ textTransform: 'none' }}
-              >
-                Logout
-              </Button>
-            )}
-            <Button color="inherit" href="#about" sx={{ textTransform: 'none' }}>
-              About us
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #27AE60, #6BCB77)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: 14,
+              }}
+            >
+              P
+            </Box>
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ fontWeight: 700, letterSpacing: 0.3, color: '#fff' }}
+            >
+              PaceCtrl
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }}>
+            <Button
+              onClick={handleLoginClick}
+              sx={{
+                textTransform: 'none',
+                color: '#fff',
+                fontWeight: 500,
+                '&:hover': { background: 'rgba(255,255,255,0.1)' },
+              }}
+            >
+              Login
             </Button>
-            <Button color="inherit" href="#manual" sx={{ textTransform: 'none' }}>
-              User Manual
+            <Button
+              href="#about"
+              sx={{
+                textTransform: 'none',
+                color: 'rgba(255,255,255,0.8)',
+                fontWeight: 500,
+                '&:hover': { background: 'rgba(255,255,255,0.1)', color: '#fff' },
+              }}
+            >
+              About us
             </Button>
           </Stack>
         </Toolbar>
@@ -102,10 +156,6 @@ function App() {
 
       {view === 'login' && (
         <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
-
-      {view === 'dashboard' && token && (
-        <DashboardPage token={token} operatorId={operatorId} />
       )}
     </Box>
   )
