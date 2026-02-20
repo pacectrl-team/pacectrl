@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.operator import Operator
 from app.models.voyage import Voyage
 from app.models.widget_config import WidgetConfig
 from app.models.speed_to_emissions_estimate import SpeedToEmissionsEstimate
@@ -28,18 +29,37 @@ def get_config(
     request: Request,
     external_trip_id: Optional[str] = Query(None, description="External trip ID to fetch config for"),
     voyage_id: Optional[int] = Query(None, description="Voyage ID to fetch config for"),
+    public_key: Optional[str] = Query(None, description="Operator public key to to disambiguate external trip IDs across operators"),
     db: Session = Depends(get_db),
 ):
     """
     Return the widget configuration for a given external_trip_id or voyage_id.
+    When using external_trip_id, public_key is required to uniquely identify
+    the operator (since two operators may share the same external_trip_id).
     """
     if not external_trip_id and not voyage_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Either external_trip_id or voyage_id must be provided")
 
+    # When looking up by external_trip_id, require public_key to disambiguate operators
+    if external_trip_id and not public_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="public_key is required when using external_trip_id",
+        )
+
     # Find the voyage
     voyage_query = db.query(Voyage)
     if external_trip_id:
-        voyage = voyage_query.filter(Voyage.external_trip_id == external_trip_id).first()
+        # Join with Operator to filter by public_key, ensuring the correct operator is matched
+        voyage = (
+            voyage_query
+            .join(Operator, Voyage.operator_id == Operator.id)
+            .filter(
+                Voyage.external_trip_id == external_trip_id,
+                Operator.public_key == public_key,
+            )
+            .first()
+        )
     else:
         voyage = voyage_query.filter(Voyage.id == voyage_id).first()
 

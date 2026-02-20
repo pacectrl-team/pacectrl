@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
 
 from app.core.database import Base, engine
 from app.core.middleware import ApiLoggingMiddleware
@@ -63,6 +65,18 @@ app.include_router(public_choice_intents_router, prefix="/api/v1/public")
 
 # Widget assets route
 app.include_router(widget_assets_router)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catch-all handler: converts unhandled exceptions into a proper JSON
+    response so the CORSMiddleware can still append its headers.
+    """
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 @app.get("/health")
 def read_health():
