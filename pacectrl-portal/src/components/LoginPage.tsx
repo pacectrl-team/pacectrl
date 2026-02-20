@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/utils/auth-store";
 import { Waves, Lock, User, Loader2 } from "lucide-react";
 import OceanSimulation from "./OceanSimulation";
 

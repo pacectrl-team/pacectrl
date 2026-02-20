@@ -6,13 +6,13 @@ import {
   getShips,
   getRoutes,
   upsertSpeedEstimateAnchors,
-} from "@/lib/api";
+} from "@/utils/api";
 import type {
   RouteShipAnchorsOut,
   Ship,
   Route,
-} from "@/lib/types";
-import { useAuthStore } from "@/lib/auth-store";
+} from "@/utils/types";
+import { useAuthStore } from "@/utils/auth-store";
 import {
   Gauge,
   Save,

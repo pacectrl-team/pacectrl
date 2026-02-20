@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getUsers, createUser, updateUser, deleteUser } from "@/lib/api";
-import type { User, UserCreate, UserUpdate } from "@/lib/types";
-import { useAuthStore } from "@/lib/auth-store";
+import { getUsers, createUser, updateUser, deleteUser } from "@/utils/api";
+import type { User, UserCreate, UserUpdate } from "@/utils/types";
+import { useAuthStore } from "@/utils/auth-store";
 import {
   Users,
   Plus,

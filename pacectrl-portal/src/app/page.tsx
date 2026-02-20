@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/utils/auth-store";
 import LoginPage from "@/components/LoginPage";
 import LoadingScreen from "@/components/LoadingScreen";
 

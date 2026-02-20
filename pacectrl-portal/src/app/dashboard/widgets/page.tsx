@@ -6,9 +6,9 @@ import {
   createWidgetConfig,
   updateWidgetConfig,
   deleteWidgetConfig,
-} from "@/lib/api";
-import type { WidgetConfig, ThemeData, WidgetConfigData } from "@/lib/types";
-import { useAuthStore } from "@/lib/auth-store";
+} from "@/utils/api";
+import type { WidgetConfig, ThemeData, WidgetConfigData } from "@/utils/types";
+import { useAuthStore } from "@/utils/auth-store";
 import {
   Palette,
   Plus,

@@ -8,9 +8,9 @@ import {
   getWidgetConfigs,
   createVoyage,
   updateVoyage,
-} from "@/lib/api";
-import { useAuthStore } from "@/lib/auth-store";
-import type { Voyage, Ship, Route, WidgetConfig } from "@/lib/types";
+} from "@/utils/api";
+import { useAuthStore } from "@/utils/auth-store";
+import type { Voyage, Ship, Route, WidgetConfig } from "@/utils/types";
 import {
   DndContext,
   DragEndEvent,

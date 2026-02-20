@@ -12,7 +12,7 @@ import {
   updateVoyage,
   upsertSpeedEstimateAnchors,
   updateWidgetConfig,
-} from "@/lib/api";
+} from "@/utils/api";
 import type {
   Voyage,
   Ship,
@@ -21,7 +21,7 @@ import type {
   ChoiceIntent,
   ConfirmedChoice,
   SpeedEstimateAnchorOut,
-} from "@/lib/types";
+} from "@/utils/types";
 import {
   ChevronDown,
   Ship as ShipIcon,

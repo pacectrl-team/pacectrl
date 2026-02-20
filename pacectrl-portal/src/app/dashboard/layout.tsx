@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/utils/auth-store";
 import Link from "next/link";
 import {
   Waves,

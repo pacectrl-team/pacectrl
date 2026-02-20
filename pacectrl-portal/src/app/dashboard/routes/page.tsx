@@ -6,9 +6,9 @@ import {
   createRoute,
   updateRoute,
   deleteRoute,
-} from "@/lib/api";
-import type { Route } from "@/lib/types";
-import { useAuthStore } from "@/lib/auth-store";
+} from "@/utils/api";
+import type { Route } from "@/utils/types";
+import { useAuthStore } from "@/utils/auth-store";
 import {
   MapPin,
   Plus,

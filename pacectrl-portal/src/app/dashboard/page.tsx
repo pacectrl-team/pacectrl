@@ -8,7 +8,7 @@ import {
   getChoiceIntents,
   getShips,
   getRoutes,
-} from "@/lib/api";
+} from "@/utils/api";
 import type {
   DashboardOverview,
   Voyage,
@@ -16,7 +16,7 @@ import type {
   ChoiceIntent,
   Ship,
   Route,
-} from "@/lib/types";
+} from "@/utils/types";
 import {
   Compass,
   Ship as ShipIcon,

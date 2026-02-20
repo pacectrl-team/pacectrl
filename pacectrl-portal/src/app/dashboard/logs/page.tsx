@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getAuditLogs, getUsers, getVoyages } from "@/lib/api";
-import type { AuditLogEntry, AuditLogResponse, User, Voyage } from "@/lib/types";
+import { getAuditLogs, getUsers, getVoyages } from "@/utils/api";
+import type { AuditLogEntry, AuditLogResponse, User, Voyage } from "@/utils/types";
 import {
   ScrollText,
   Search,

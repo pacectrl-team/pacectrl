@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getShips, createShip, updateShip, deleteShip } from "@/lib/api";
-import type { Ship } from "@/lib/types";
-import { useAuthStore } from "@/lib/auth-store";
+import { getShips, createShip, updateShip, deleteShip } from "@/utils/api";
+import type { Ship } from "@/utils/types";
+import { useAuthStore } from "@/utils/auth-store";
 import {
   Ship as ShipIcon,
   Plus,
