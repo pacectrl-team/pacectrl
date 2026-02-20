@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Accordion,
   AccordionDetails,
@@ -145,7 +145,33 @@ function ColorField({ label, value, onChange }: ColorFieldProps) {
   )
 }
 
-/* ── Live Preview (widget mockup) ──────────────────── */
+/* ── Widget bundle URL (same bundle used in widget-customizer.html) ── */
+const WIDGET_BUNDLE_URL = 'https://pacectrl-production.up.railway.app/widget.js'
+
+/**
+ * Loads the real PaceCtrl widget bundle script once. Returns a promise that
+ * resolves when window.PaceCtrlWidget is available.
+ */
+let widgetScriptPromise: Promise<void> | null = null
+function ensureWidgetScript(): Promise<void> {
+  if (widgetScriptPromise) return widgetScriptPromise
+  widgetScriptPromise = new Promise<void>((resolve, reject) => {
+    // Already loaded (e.g. from a previous session)
+    if ((window as unknown as { PaceCtrlWidget?: unknown }).PaceCtrlWidget) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = WIDGET_BUNDLE_URL
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load widget bundle'))
+    document.head.appendChild(script)
+  })
+  return widgetScriptPromise
+}
+
+/* ── Live Preview using the real widget bundle ───────── */
 
 type LivePreviewProps = {
   name: string
@@ -153,43 +179,143 @@ type LivePreviewProps = {
   theme: Partial<WidgetTheme>
 }
 
+/**
+ * Renders the real PaceCtrl widget inside the portal preview pane.
+ * Intercepts fetch() calls so the widget reads the editor's current
+ * config instead of hitting the backend, same technique used in
+ * widget-customizer.html.
+ */
 function LivePreview({ name, defaultSpeedPercentage, theme }: LivePreviewProps) {
-  const slowColor = theme.slider_slow_color ?? '#27AE60'
-  const fastColor = theme.slider_fast_color ?? '#E74C3C'
-  const bgHueSlow = theme.background_hue_slow_color ?? '#94ffa9'
-  const bgHueFast = theme.background_hue_fast_color ?? '#ffb3b3'
-  const fontColor = theme.font_color ?? '#2C3E50'
-  const backgroundColor = theme.background_color ?? '#ffffff'
-  const borderColor = theme.border_color ?? '#E1E8ED'
-  const borderWidth = theme.border_width ?? 1
-  const fontSize = theme.font_size ?? 16
-  const fontFamily =
-    theme.font_family ?? 'SF Pro Display, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-  const rounding = theme.rounding_px ?? 8
-  const sliderDotColor = theme.slider_dot_color ?? '#4A90E2'
-  const sliderLabel = theme.slider_label ?? 'Select Voyage Speed'
-  const scaleLabelSlow = theme.scale_label_slow ?? 'Eco-Friendly'
-  const scaleLabelFast = theme.scale_label_fast ?? 'Expedited'
-  const infoText = theme.info_text ?? 'Preference synced'
-  const moodSlowText = theme.mood_slow_text ?? 'Eco'
-  const moodStandardText = theme.mood_standard_text ?? 'Standard'
-  const moodFastText = theme.mood_fast_text ?? 'Fast'
-  const clampedSpeed = Math.min(100, Math.max(0, defaultSpeedPercentage || 50))
+  const hostRef = useRef<HTMLDivElement>(null)
+  const destroyRef = useRef<(() => void) | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  /* simple slow‑to‑fast background hue */
-  const bgHue = (() => {
-    const pct = clampedSpeed / 100
-    const slowR = parseInt(bgHueSlow.slice(1, 3), 16) || 148
-    const slowG = parseInt(bgHueSlow.slice(3, 5), 16) || 255
-    const slowB = parseInt(bgHueSlow.slice(5, 7), 16) || 169
-    const fastR = parseInt(bgHueFast.slice(1, 3), 16) || 255
-    const fastG = parseInt(bgHueFast.slice(3, 5), 16) || 179
-    const fastB = parseInt(bgHueFast.slice(5, 7), 16) || 179
-    const r = Math.round(slowR + (fastR - slowR) * pct)
-    const g = Math.round(slowG + (fastG - slowG) * pct)
-    const b = Math.round(slowB + (fastB - slowB) * pct)
-    return `rgba(${r},${g},${b},0.25)`
-  })()
+  useEffect(() => {
+    let cancelled = false
+
+    /** Build a fake WidgetConfig from the current editor state. */
+    const buildFakeConfig = () => ({
+      id: 0,
+      name: 'Portal Preview',
+      description: null,
+      default_speed_percentage: defaultSpeedPercentage ?? 50,
+      default_departure_datetime: null,
+      default_arrival_datetime: '2026-06-15T14:00:00',
+      status: 'scheduled',
+      derived: { min_speed: 8, max_speed: 16 },
+      theme: { ...theme },
+      anchors: {
+        slow: {
+          profile: 'slow',
+          speed_knots: 8,
+          expected_emissions_kg_co2: 80,
+          expected_arrival_delta_minutes: 25,
+        },
+        standard: {
+          profile: 'standard',
+          speed_knots: 12,
+          expected_emissions_kg_co2: 120,
+          expected_arrival_delta_minutes: 0,
+        },
+        fast: {
+          profile: 'fast',
+          speed_knots: 16,
+          expected_emissions_kg_co2: 200,
+          expected_arrival_delta_minutes: -10,
+        },
+      },
+    })
+
+    async function mount() {
+      try {
+        await ensureWidgetScript()
+      } catch {
+        if (!cancelled) setLoadError('Could not load the widget script.')
+        return
+      }
+      if (cancelled || !hostRef.current) return
+
+      // Tear down any previous widget instance
+      if (destroyRef.current) {
+        destroyRef.current()
+        destroyRef.current = null
+      }
+      hostRef.current.innerHTML = ''
+
+      // Intercept fetch – return fake config for widget API calls
+      const realFetch = window.fetch.bind(window)
+      window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url
+        if (url.includes('/api/v1/public/widget/config')) {
+          return Promise.resolve(
+            new Response(JSON.stringify(buildFakeConfig()), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+        }
+        if (url.includes('/api/v1/public/choice-intents')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                intent_id: '00000000-0000-0000-0000-000000000000',
+                voyage_id: 0,
+                slider_value: 0.5,
+                delta_pct_from_standard: 0,
+                selected_speed_kn: null,
+                created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 900_000).toISOString(),
+              }),
+              { status: 201, headers: { 'Content-Type': 'application/json' } },
+            ),
+          )
+        }
+        return realFetch(input, init)
+      } as typeof window.fetch
+
+      try {
+        const PaceCtrlWidget = (window as unknown as { PaceCtrlWidget: { init: (opts: unknown) => Promise<{ destroy: () => void }> } }).PaceCtrlWidget
+        const result = await PaceCtrlWidget.init({
+          container: hostRef.current,
+          externalTripId: 'portal-preview',
+          publicKey: 'portal-preview',
+          onIntentCreated() { /* swallow */ },
+        })
+        destroyRef.current = result.destroy
+      } finally {
+        // Always restore real fetch
+        window.fetch = realFetch
+      }
+    }
+
+    void mount()
+
+    return () => {
+      cancelled = true
+      if (destroyRef.current) {
+        destroyRef.current()
+        destroyRef.current = null
+      }
+    }
+  }, [defaultSpeedPercentage, theme])
+
+  if (loadError) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 1,
+          p: 4,
+          minHeight: 400,
+          color: 'error.main',
+        }}
+      >
+        <Typography>{loadError}</Typography>
+      </Box>
+    )
+  }
 
   return (
     <Box
@@ -200,189 +326,22 @@ function LivePreview({ name, defaultSpeedPercentage, theme }: LivePreviewProps) 
         justifyContent: 'center',
         flex: 1,
         p: 4,
-        background: bgHue,
         minHeight: 400,
+        background:
+          'radial-gradient(circle at top, rgba(54,133,107,0.12), transparent 55%), '
+          + 'radial-gradient(circle at bottom, rgba(197,71,54,0.08), transparent 60%), '
+          + '#f0f2f5',
       }}
     >
       <Box
+        ref={hostRef}
         sx={{
           width: '100%',
-          maxWidth: 380,
-          borderRadius: `${rounding}px`,
-          bgcolor: backgroundColor,
-          border: `${borderWidth}px solid ${borderColor}`,
-          color: fontColor,
-          fontFamily,
-          fontSize: `${fontSize}px`,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-          overflow: 'hidden',
+          maxWidth: 700,
+          display: 'flex',
+          justifyContent: 'center',
         }}
-      >
-        {/* Widget header */}
-        <Box sx={{ p: 2.5, pb: 1 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography
-              sx={{
-                fontWeight: 600,
-                fontSize: `${fontSize * 1.1}px`,
-                fontFamily,
-                color: fontColor,
-              }}
-            >
-              {sliderLabel}
-            </Typography>
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                border: `1px solid ${borderColor}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 12,
-                color: fontColor,
-                opacity: 0.5,
-              }}
-            >
-              ?
-            </Box>
-          </Stack>
-        </Box>
-
-        {/* Slider area */}
-        <Box sx={{ px: 2.5, pt: 1, pb: 0.5 }}>
-          {/* Speed label */}
-          <Box sx={{ position: 'relative', mb: 0.5 }}>
-            <Box
-              sx={{
-                position: 'absolute',
-                left: `${clampedSpeed}%`,
-                transform: 'translateX(-50%)',
-                bgcolor: fontColor,
-                color: backgroundColor,
-                borderRadius: '4px',
-                px: 1,
-                py: 0.2,
-                fontSize: 11,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              +0 min
-            </Box>
-          </Box>
-
-          <Box sx={{ mt: 3, position: 'relative' }}>
-            {/* Track */}
-            <Box
-              sx={{
-                height: 8,
-                borderRadius: 99,
-                background: `linear-gradient(90deg, ${slowColor}, ${fastColor})`,
-              }}
-            />
-            {/* Dot */}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: `${clampedSpeed}%`,
-                transform: 'translate(-50%, -50%)',
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                bgcolor: sliderDotColor,
-                border: '3px solid #fff',
-                boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
-              }}
-            />
-          </Box>
-          <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                color: slowColor,
-              }}
-            >
-              {scaleLabelSlow}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                color: fastColor,
-              }}
-            >
-              {scaleLabelFast}
-            </Typography>
-          </Stack>
-        </Box>
-
-        {/* Info cards */}
-        <Box sx={{ px: 2.5, py: 2 }}>
-          <Stack direction="row" spacing={1}>
-            {[
-              { label: 'MOOD', value: clampedSpeed <= 33 ? moodSlowText : clampedSpeed <= 66 ? moodStandardText : moodFastText },
-              { label: 'ESTIMATED ARRIVAL', value: '14:00 (+0 min)' },
-              { label: 'EMISSIONS', value: '120 kg CO\u2082 (+0 kg)' },
-            ].map((item) => (
-              <Box
-                key={item.label}
-                sx={{
-                  flex: 1,
-                  p: 1.2,
-                  borderRadius: `${Math.max(rounding - 4, 4)}px`,
-                  border: `1px solid ${borderColor}`,
-                  background: backgroundColor,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                    color: fontColor,
-                    opacity: 0.5,
-                    mb: 0.3,
-                    fontFamily,
-                  }}
-                >
-                  {item.label}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: `${fontSize * 0.85}px`,
-                    fontWeight: 600,
-                    color: fontColor,
-                    fontFamily,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {item.value}
-                </Typography>
-              </Box>
-            ))}
-          </Stack>
-        </Box>
-
-        {/* Footer */}
-        <Box sx={{ px: 2.5, pb: 2, textAlign: 'center' }}>
-          <Typography
-            sx={{ fontSize: 11, color: fontColor, opacity: 0.4, fontFamily }}
-          >
-            {infoText}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Widget name label */}
+      />
       {name && (
         <Typography
           variant="caption"
