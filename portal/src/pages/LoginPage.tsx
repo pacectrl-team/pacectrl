@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Box, Button, Container, Paper, Stack, TextField, Typography } from '@mui/material'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
 type LoginPageProps = {
   onLoginSuccess: (token: string, operatorId: number | null) => void
@@ -83,13 +84,36 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   return (
     <Box className="login-section" id="login">
-      <Container maxWidth="sm">
-        <Paper elevation={6} className="login-card">
+      <Container maxWidth="sm" sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Paper elevation={0} className="login-card">
           <Box component="form" onSubmit={handleLoginSubmit} noValidate>
-            <Stack spacing={3}>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-                Login
-              </Typography>
+            <Stack spacing={3} alignItems="center">
+              {/* Icon */}
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #27AE60, #6BCB77)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: '0 4px 20px rgba(39, 174, 96, 0.3)',
+                }}
+              >
+                <LockOutlinedIcon sx={{ fontSize: 28 }} />
+              </Box>
+
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  Welcome back
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Sign in to your PaceCtrl Portal account
+                </Typography>
+              </Box>
+
               <TextField
                 label="Username"
                 variant="outlined"
@@ -110,19 +134,29 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 required
               />
               {error && (
-                <Typography variant="body2" color="error">
+                <Typography variant="body2" color="error" sx={{ textAlign: 'center' }}>
                   {error}
                 </Typography>
               )}
               <Button
                 variant="contained"
-                color="success"
                 size="large"
                 fullWidth
                 type="submit"
                 disabled={isSubmitting}
+                sx={{
+                  background: 'linear-gradient(135deg, #27AE60, #6BCB77)',
+                  py: 1.5,
+                  fontSize: 16,
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 16px rgba(39, 174, 96, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #219653, #81D89E)',
+                    boxShadow: '0 6px 24px rgba(39, 174, 96, 0.4)',
+                  },
+                }}
               >
-                {isSubmitting ? 'Signing in...' : 'Submit'}
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
             </Stack>
           </Box>

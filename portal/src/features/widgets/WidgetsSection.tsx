@@ -1,5 +1,33 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Box, Button, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import SettingsIcon from '@mui/icons-material/SettingsRounded'
+import PaletteIcon from '@mui/icons-material/PaletteRounded'
+import TextFieldsIcon from '@mui/icons-material/TextFieldsRounded'
+import ViewQuiltIcon from '@mui/icons-material/ViewQuiltRounded'
+import LabelIcon from '@mui/icons-material/LabelRounded'
+import ContentCopyIcon from '@mui/icons-material/ContentCopyRounded'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineRounded'
+import CloudUploadIcon from '@mui/icons-material/CloudUploadRounded'
+import RefreshIcon from '@mui/icons-material/RefreshRounded'
+import VisibilityIcon from '@mui/icons-material/VisibilityRounded'
+import AddIcon from '@mui/icons-material/AddRounded'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
 
 type WidgetsSectionProps = {
@@ -10,10 +38,35 @@ type WidgetsSectionProps = {
 const WIDGET_CONFIGS_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 
+const DEFAULT_THEME_VALUES: Record<keyof WidgetTheme, string> = {
+  slider_slow_color: '#27AE60',
+  slider_fast_color: '#E74C3C',
+  background_hue_slow_color: '#94ffa9',
+  background_hue_fast_color: '#ffb3b3',
+  font_color: '#2C3E50',
+  background_color: '#ffffff',
+  border_color: '#E1E8ED',
+  border_width: '1',
+  font_size: '16',
+  font_family: 'SF Pro Display, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  rounding_px: '8',
+  slider_dot_color: '#4A90E2',
+  slider_label: 'Select Voyage Speed',
+  scale_label_slow: 'Eco-Friendly',
+  scale_label_fast: 'Expedited',
+  info_text: 'Preference synced',
+  mood_slow_text: 'Eco',
+  mood_standard_text: 'Standard',
+  mood_fast_text: 'Fast',
+  widget_width: '100%',
+}
+
 function buildThemeFromStrings(values: Record<keyof WidgetTheme, string>): WidgetTheme {
   return {
-    slow_color: values.slow_color,
-    fast_color: values.fast_color,
+    slider_slow_color: values.slider_slow_color,
+    slider_fast_color: values.slider_fast_color,
+    background_hue_slow_color: values.background_hue_slow_color,
+    background_hue_fast_color: values.background_hue_fast_color,
     font_color: values.font_color,
     background_color: values.background_color,
     border_color: values.border_color,
@@ -22,221 +75,365 @@ function buildThemeFromStrings(values: Record<keyof WidgetTheme, string>): Widge
     font_family: values.font_family,
     rounding_px: Number(values.rounding_px) || 0,
     slider_dot_color: values.slider_dot_color,
+    slider_label: values.slider_label,
+    scale_label_slow: values.scale_label_slow,
+    scale_label_fast: values.scale_label_fast,
+    info_text: values.info_text,
+    mood_slow_text: values.mood_slow_text,
+    mood_standard_text: values.mood_standard_text,
+    mood_fast_text: values.mood_fast_text,
+    widget_width: values.widget_width,
   }
 }
 
-type ThemePreviewProps = {
-  title: string
+/* ── Colour field row ──────────────────────────────── */
+
+type ColorFieldProps = {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}
+
+function ColorField({ label, value, onChange }: ColorFieldProps) {
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          display: 'block',
+          mb: 0.5,
+          fontWeight: 600,
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          fontSize: 10,
+          color: 'text.secondary',
+        }}
+      >
+        {label}
+      </Typography>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Box
+          component="input"
+          type="color"
+          value={value}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+          sx={{
+            width: 32,
+            height: 32,
+            border: '2px solid',
+            borderColor: 'divider',
+            borderRadius: '6px',
+            padding: 0,
+            cursor: 'pointer',
+            background: 'none',
+            '&::-webkit-color-swatch-wrapper': { padding: 0 },
+            '&::-webkit-color-swatch': { border: 'none', borderRadius: '4px' },
+          }}
+        />
+        <TextField
+          size="small"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          sx={{
+            flex: 1,
+            '& .MuiOutlinedInput-root': { borderRadius: '6px', fontSize: 13 },
+            '& .MuiOutlinedInput-input': { py: '6px', px: 1 },
+          }}
+        />
+      </Stack>
+    </Box>
+  )
+}
+
+/* ── Widget bundle URL (same bundle used in widget-customizer.html) ── */
+const WIDGET_BUNDLE_URL = 'https://pacectrl-production.up.railway.app/widget.js'
+
+/**
+ * Loads the real PaceCtrl widget bundle script once. Returns a promise that
+ * resolves when window.PaceCtrlWidget is available.
+ */
+let widgetScriptPromise: Promise<void> | null = null
+function ensureWidgetScript(): Promise<void> {
+  if (widgetScriptPromise) return widgetScriptPromise
+  widgetScriptPromise = new Promise<void>((resolve, reject) => {
+    // Already loaded (e.g. from a previous session)
+    if ((window as unknown as { PaceCtrlWidget?: unknown }).PaceCtrlWidget) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = WIDGET_BUNDLE_URL
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load widget bundle'))
+    document.head.appendChild(script)
+  })
+  return widgetScriptPromise
+}
+
+/* ── Live Preview using the real widget bundle ───────── */
+
+type LivePreviewProps = {
+  name: string
   defaultSpeedPercentage: number
   theme: Partial<WidgetTheme>
 }
 
-function ThemePreview({ title, defaultSpeedPercentage, theme }: ThemePreviewProps) {
-  const slowColor = theme.slow_color ?? '#4caf50'
-  const fastColor = theme.fast_color ?? '#f44336'
-  const fontColor = theme.font_color ?? '#000000'
-  const backgroundColor = theme.background_color ?? '#ffffff'
-  const borderColor = theme.border_color ?? '#e0e0e0'
-  const borderWidth = theme.border_width ?? 1
-  const fontSize = theme.font_size ?? 1
-  const fontFamily = theme.font_family ?? 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-  const rounding = theme.rounding_px ?? 8
-  const sliderDotColor = theme.slider_dot_color ?? '#000000'
+/**
+ * Renders the real PaceCtrl widget inside the portal preview pane.
+ * Intercepts fetch() calls so the widget reads the editor's current
+ * config instead of hitting the backend, same technique used in
+ * widget-customizer.html.
+ */
+function LivePreview({ name, defaultSpeedPercentage, theme }: LivePreviewProps) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const destroyRef = useRef<(() => void) | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const clampedSpeed = Math.min(100, Math.max(0, defaultSpeedPercentage || 0))
+  useEffect(() => {
+    let cancelled = false
+
+    /** Build a fake WidgetConfig from the current editor state. */
+    const buildFakeConfig = () => ({
+      id: 0,
+      name: 'Portal Preview',
+      description: null,
+      default_speed_percentage: defaultSpeedPercentage ?? 50,
+      default_departure_datetime: null,
+      default_arrival_datetime: '2026-06-15T14:00:00',
+      status: 'scheduled',
+      derived: { min_speed: 8, max_speed: 16 },
+      theme: { ...theme },
+      anchors: {
+        slow: {
+          profile: 'slow',
+          speed_knots: 8,
+          expected_emissions_kg_co2: 80,
+          expected_arrival_delta_minutes: 25,
+        },
+        standard: {
+          profile: 'standard',
+          speed_knots: 12,
+          expected_emissions_kg_co2: 120,
+          expected_arrival_delta_minutes: 0,
+        },
+        fast: {
+          profile: 'fast',
+          speed_knots: 16,
+          expected_emissions_kg_co2: 200,
+          expected_arrival_delta_minutes: -10,
+        },
+      },
+    })
+
+    async function mount() {
+      try {
+        await ensureWidgetScript()
+      } catch {
+        if (!cancelled) setLoadError('Could not load the widget script.')
+        return
+      }
+      if (cancelled || !hostRef.current) return
+
+      // Tear down any previous widget instance
+      if (destroyRef.current) {
+        destroyRef.current()
+        destroyRef.current = null
+      }
+      hostRef.current.innerHTML = ''
+
+      // Intercept fetch – return fake config for widget API calls
+      const realFetch = window.fetch.bind(window)
+      window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url
+        if (url.includes('/api/v1/public/widget/config')) {
+          return Promise.resolve(
+            new Response(JSON.stringify(buildFakeConfig()), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+        }
+        if (url.includes('/api/v1/public/choice-intents')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                intent_id: '00000000-0000-0000-0000-000000000000',
+                voyage_id: 0,
+                slider_value: 0.5,
+                delta_pct_from_standard: 0,
+                selected_speed_kn: null,
+                created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 900_000).toISOString(),
+              }),
+              { status: 201, headers: { 'Content-Type': 'application/json' } },
+            ),
+          )
+        }
+        return realFetch(input, init)
+      } as typeof window.fetch
+
+      try {
+        const PaceCtrlWidget = (window as unknown as { PaceCtrlWidget: { init: (opts: unknown) => Promise<{ destroy: () => void }> } }).PaceCtrlWidget
+        const result = await PaceCtrlWidget.init({
+          container: hostRef.current,
+          externalTripId: 'portal-preview',
+          publicKey: 'portal-preview',
+          onIntentCreated() { /* swallow */ },
+        })
+        destroyRef.current = result.destroy
+      } finally {
+        // Always restore real fetch
+        window.fetch = realFetch
+      }
+    }
+
+    void mount()
+
+    return () => {
+      cancelled = true
+      if (destroyRef.current) {
+        destroyRef.current()
+        destroyRef.current = null
+      }
+    }
+  }, [defaultSpeedPercentage, theme])
+
+  if (loadError) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 1,
+          p: 4,
+          minHeight: 400,
+          color: 'error.main',
+        }}
+      >
+        <Typography>{loadError}</Typography>
+      </Box>
+    )
+  }
 
   return (
     <Box
       sx={{
-        mt: 2,
-        p: 2,
-        borderRadius: rounding,
-        bgcolor: backgroundColor,
-        border: `${borderWidth}px solid ${borderColor}`,
-        color: fontColor,
-        fontFamily,
-        fontSize: `${fontSize}rem`,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        p: 4,
+        minHeight: 400,
+        background:
+          'radial-gradient(circle at top, rgba(54,133,107,0.12), transparent 55%), '
+          + 'radial-gradient(circle at bottom, rgba(197,71,54,0.08), transparent 60%), '
+          + '#f0f2f5',
       }}
     >
-      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        {title}
-      </Typography>
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        Default speed: {clampedSpeed}%
-      </Typography>
       <Box
+        ref={hostRef}
         sx={{
-          position: 'relative',
-          height: 10,
-          borderRadius: 999,
-          background: `linear-gradient(90deg, ${slowColor}, ${fastColor})`,
-          mb: 1,
+          width: '100%',
+          maxWidth: 700,
+          display: 'flex',
+          justifyContent: 'center',
         }}
-      >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: `${clampedSpeed}%`,
-            transform: 'translate(-50%, -50%)',
-            width: 14,
-            height: 14,
-            borderRadius: '50%',
-            bgcolor: sliderDotColor,
-            border: '2px solid #ffffff',
-            boxShadow: 1,
-          }}
-        />
-      </Box>
-      <Typography variant="caption" color="text.secondary">
-        Slow
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ float: 'right' }}>
-        Fast
-      </Typography>
+      />
+      {name && (
+        <Typography
+          variant="caption"
+          sx={{ mt: 2, color: 'text.secondary', fontStyle: 'italic' }}
+        >
+          {name}
+        </Typography>
+      )}
     </Box>
   )
 }
+
+/* ── Compact label helper ──────────────────────────── */
+
+const fieldLabelSx = {
+  display: 'block',
+  mb: 0.5,
+  fontWeight: 600,
+  letterSpacing: 0.8,
+  textTransform: 'uppercase' as const,
+  fontSize: 10,
+  color: 'text.secondary',
+}
+
+const fieldInputSx = {
+  '& .MuiOutlinedInput-root': { borderRadius: '6px', fontSize: 13 },
+}
+
+/* ── Main Section ──────────────────────────────────── */
 
 function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
   const [configs, setConfigs] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const [createName, setCreateName] = useState('')
-  const [createDescription, setCreateDescription] = useState('')
-  const [createDefaultSpeed, setCreateDefaultSpeed] = useState('100')
-  const [createIsActive, setCreateIsActive] = useState(true)
-
-  const [createThemeValues, setCreateThemeValues] = useState<Record<keyof WidgetTheme, string>>({
-    slow_color: '#4caf50',
-    fast_color: '#f44336',
-    font_color: '#000000',
-    background_color: '#ffffff',
-    border_color: '#e0e0e0',
-    border_width: '1',
-    font_size: '1',
-    font_family: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    rounding_px: '8',
-    slider_dot_color: '#000000',
+  /* Editor state */
+  const [selectedId, setSelectedId] = useState<number | 'new' | ''>('')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [defaultSpeed, setDefaultSpeed] = useState('50')
+  const [isActive, setIsActive] = useState(true)
+  const [themeValues, setThemeValues] = useState<Record<keyof WidgetTheme, string>>({
+    ...DEFAULT_THEME_VALUES,
   })
+  const [previewKey, setPreviewKey] = useState(0)
 
-  const [selectedConfig, setSelectedConfig] = useState<WidgetConfig | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editDescription, setEditDescription] = useState('')
-  const [editDefaultSpeed, setEditDefaultSpeed] = useState('100')
-  const [editIsActive, setEditIsActive] = useState(true)
-  const [editThemeValues, setEditThemeValues] = useState<Record<keyof WidgetTheme, string>>({
-    slow_color: '',
-    fast_color: '',
-    font_color: '',
-    background_color: '',
-    border_color: '',
-    border_width: '',
-    font_size: '',
-    font_family: '',
-    rounding_px: '',
-    slider_dot_color: '',
-  })
+  /* Accordion panels */
+  const [expanded, setExpanded] = useState<string[]>(['config', 'colours'])
 
-  const fetchConfigs = async () => {
+  const handleAccordionToggle = (panel: string) => {
+    setExpanded((prev) =>
+      prev.includes(panel) ? prev.filter((p) => p !== panel) : [...prev, panel],
+    )
+  }
+
+  /* ── Data fetching ─────────────────────────────── */
+
+  const fetchConfigs = useCallback(async () => {
     if (!token) return
-
     setLoading(true)
     setError('')
     try {
       const response = await fetch(WIDGET_CONFIGS_URL, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to load widget configs')
-      }
-
+      if (!response.ok) throw new Error('Failed to load widget configs')
       const data = (await response.json()) as WidgetConfig[]
       setConfigs(data)
     } catch {
-      setError('Unable to load widget configs. Please try again.')
+      setError('Unable to load widget configs.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
 
   useEffect(() => {
     void fetchConfigs()
-  }, [token])
+  }, [fetchConfigs])
 
-  const resetError = () => setError('')
+  /* ── Selection handling ────────────────────────── */
 
-  const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!token) return
-
-    resetError()
-
-    const body: WidgetConfigCreate = {
-      name: createName,
-      description: createDescription,
-      config: {
-        default_speed_percentage: Number(createDefaultSpeed) || 0,
-        theme: buildThemeFromStrings(createThemeValues),
-      },
-      is_active: createIsActive,
-    }
-
-    if (operatorId !== null) {
-      body.operator_id = operatorId
-    }
-
-    try {
-      const response = await fetch(WIDGET_CONFIGS_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create widget config')
-      }
-
-      setCreateName('')
-      setCreateDescription('')
-      setCreateDefaultSpeed('100')
-      setCreateIsActive(true)
-      setCreateThemeValues({
-        slow_color: '#4caf50',
-        fast_color: '#f44336',
-        font_color: '#000000',
-        background_color: '#ffffff',
-        border_color: '#e0e0e0',
-        border_width: '1',
-        font_size: '1',
-        font_family: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        rounding_px: '8',
-        slider_dot_color: '#000000',
-      })
-
-      await fetchConfigs()
-    } catch {
-      setError('Unable to create widget config. Please check the details and try again.')
-    }
-  }
-
-  const handleConfigClick = async (config: WidgetConfig) => {
-    setSelectedConfig(config)
-    setEditName(config.name)
-    setEditDescription(config.description)
-    setEditDefaultSpeed(String(config.config.default_speed_percentage))
-    setEditIsActive(config.is_active)
-    setEditThemeValues({
-      slow_color: config.config.theme.slow_color,
-      fast_color: config.config.theme.fast_color,
+  const populateFromConfig = (config: WidgetConfig) => {
+    setName(config.name)
+    setDescription(config.description)
+    setDefaultSpeed(String(config.config.default_speed_percentage))
+    setIsActive(config.is_active)
+    setThemeValues({
+      slider_slow_color: config.config.theme.slider_slow_color,
+      slider_fast_color: config.config.theme.slider_fast_color,
+      background_hue_slow_color: config.config.theme.background_hue_slow_color,
+      background_hue_fast_color: config.config.theme.background_hue_fast_color,
       font_color: config.config.theme.font_color,
       background_color: config.config.theme.background_color,
       border_color: config.config.theme.border_color,
@@ -245,468 +442,618 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       font_family: config.config.theme.font_family,
       rounding_px: String(config.config.theme.rounding_px),
       slider_dot_color: config.config.theme.slider_dot_color,
+      slider_label: config.config.theme.slider_label,
+      scale_label_slow: config.config.theme.scale_label_slow,
+      scale_label_fast: config.config.theme.scale_label_fast,
+      info_text: config.config.theme.info_text,
+      mood_slow_text: config.config.theme.mood_slow_text,
+      mood_standard_text: config.config.theme.mood_standard_text,
+      mood_fast_text: config.config.theme.mood_fast_text,
+      widget_width: config.config.theme.widget_width,
     })
   }
 
-  const handleUpdate = async () => {
-    if (!token || !selectedConfig) return
+  const resetToDefaults = () => {
+    setName('')
+    setDescription('')
+    setDefaultSpeed('50')
+    setIsActive(true)
+    setThemeValues({ ...DEFAULT_THEME_VALUES })
+  }
 
-    resetError()
+  const handleSelectChange = (value: number | 'new' | '') => {
+    setSelectedId(value)
+    if (value === 'new') {
+      resetToDefaults()
+    } else if (typeof value === 'number') {
+      const config = configs.find((c) => c.id === value)
+      if (config) populateFromConfig(config)
+    }
+  }
 
+  /* Auto‑select first config on load */
+  useEffect(() => {
+    if (configs.length > 0 && selectedId === '') {
+      const first = configs[0]
+      setSelectedId(first.id)
+      populateFromConfig(first)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configs])
+
+  const handleThemeChange = (key: keyof WidgetTheme, value: string) => {
+    setThemeValues((prev) => ({ ...prev, [key]: value }))
+  }
+
+  /* ── CRUD ──────────────────────────────────────── */
+
+  const buildBody = (): WidgetConfigCreate => {
     const body: WidgetConfigCreate = {
-      name: editName,
-      description: editDescription,
+      name,
+      description,
       config: {
-        default_speed_percentage: Number(editDefaultSpeed) || 0,
-        theme: buildThemeFromStrings(editThemeValues),
+        default_speed_percentage: Number(defaultSpeed) || 0,
+        theme: buildThemeFromStrings(themeValues),
       },
-      is_active: editIsActive,
+      is_active: isActive,
     }
+    if (operatorId !== null) body.operator_id = operatorId
+    return body
+  }
 
-    if (operatorId !== null) {
-      body.operator_id = operatorId
-    }
-
+  const handleCreate = async () => {
+    if (!token) return
+    setError('')
     try {
-      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedConfig.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
+      const response = await fetch(WIDGET_CONFIGS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(buildBody()),
       })
+      if (!response.ok) throw new Error('Create failed')
+      const created = (await response.json()) as WidgetConfig
+      await fetchConfigs()
+      setSelectedId(created.id)
+      populateFromConfig(created)
+    } catch {
+      setError('Unable to create widget config.')
+    }
+  }
 
-      if (!response.ok) {
-        throw new Error('Failed to update widget config')
-      }
-
+  const handleUpdate = async () => {
+    if (!token || typeof selectedId !== 'number') return
+    setError('')
+    try {
+      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(buildBody()),
+      })
+      if (!response.ok) throw new Error('Update failed')
       await fetchConfigs()
     } catch {
-      setError('Unable to update widget config. Please try again.')
+      setError('Unable to update widget config.')
     }
   }
 
   const handleDelete = async () => {
-    if (!token || !selectedConfig) return
-
-    resetError()
-
+    if (!token || typeof selectedId !== 'number') return
+    setError('')
     try {
-      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedConfig.id}`, {
+      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete widget config')
-      }
-
-      setSelectedConfig(null)
-      setEditName('')
-      setEditDescription('')
-      setEditDefaultSpeed('100')
-      setEditIsActive(true)
-      setEditThemeValues({
-        slow_color: '',
-        fast_color: '',
-        font_color: '',
-        background_color: '',
-        border_color: '',
-        border_width: '',
-        font_size: '',
-        font_family: '',
-        rounding_px: '',
-        slider_dot_color: '',
-      })
-
+      if (!response.ok) throw new Error('Delete failed')
+      setSelectedId('')
+      resetToDefaults()
       await fetchConfigs()
     } catch {
-      setError('Unable to delete widget config. Please try again.')
+      setError('Unable to delete widget config.')
     }
   }
 
-  const handleCreateThemeChange = (key: keyof WidgetTheme, value: string) => {
-    setCreateThemeValues((prev) => ({ ...prev, [key]: value }))
+  const handleCopyJson = () => {
+    const json = JSON.stringify(buildBody(), null, 2)
+    void navigator.clipboard.writeText(json)
   }
 
-  const handleEditThemeChange = (key: keyof WidgetTheme, value: string) => {
-    setEditThemeValues((prev) => ({ ...prev, [key]: value }))
+  const isEditing = typeof selectedId === 'number'
+  const isCreating = selectedId === 'new'
+  const hasSelection = isEditing || isCreating
+
+  /* ── Accordion style overrides ─────────────────── */
+
+  const accordionSx = {
+    boxShadow: 'none',
+    border: 'none',
+    '&::before': { display: 'none' },
+    '&.Mui-expanded': { margin: 0 },
+    borderRadius: '0 !important',
+    background: 'transparent',
   }
+
+  const accordionSummarySx = {
+    minHeight: 40,
+    px: 0,
+    '& .MuiAccordionSummary-content': { margin: '8px 0', gap: 1, alignItems: 'center' },
+  }
+
+  /* ── Render ────────────────────────────────────── */
 
   return (
-    <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreate} noValidate>
-        <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create widget config
+    <Box>
+      {/* ────── Top bar ────── */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 1.5,
+        }}
+      >
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Widget Editor
           </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Name"
-              variant="outlined"
-              value={createName}
-              onChange={(event) => setCreateName(event.target.value)}
-              fullWidth
-              required
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={createIsActive}
-                  onChange={(event) => setCreateIsActive(event.target.checked)}
-                  color="success"
-                />
-              }
-              label="Active"
-            />
-          </Stack>
-          <TextField
-            label="Description"
-            variant="outlined"
-            value={createDescription}
-            onChange={(event) => setCreateDescription(event.target.value)}
-            fullWidth
-            multiline
-            minRows={2}
-          />
-          <TextField
-            label="Default speed percentage"
-            type="number"
-            variant="outlined"
-            value={createDefaultSpeed}
-            onChange={(event) => setCreateDefaultSpeed(event.target.value)}
-            fullWidth
-          />
-
-          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-            Theme
-          </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Slow color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.slow_color}
-              onChange={(event) => handleCreateThemeChange('slow_color', event.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Fast color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.fast_color}
-              onChange={(event) => handleCreateThemeChange('fast_color', event.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Slider dot color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.slider_dot_color}
-              onChange={(event) =>
-                handleCreateThemeChange('slider_dot_color', event.target.value)
-              }
-              fullWidth
-            />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Background color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.background_color}
-              onChange={(event) =>
-                handleCreateThemeChange('background_color', event.target.value)
-              }
-              fullWidth
-            />
-            <TextField
-              label="Font color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.font_color}
-              onChange={(event) => handleCreateThemeChange('font_color', event.target.value)}
-              fullWidth
-            />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Border color"
-              variant="outlined"
-              type="color"
-              value={createThemeValues.border_color}
-              onChange={(event) => handleCreateThemeChange('border_color', event.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Border width"
-              type="number"
-              variant="outlined"
-              value={createThemeValues.border_width}
-              onChange={(event) => handleCreateThemeChange('border_width', event.target.value)}
-              fullWidth
-            />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Font size (rem)"
-              type="number"
-              variant="outlined"
-              value={createThemeValues.font_size}
-              onChange={(event) => handleCreateThemeChange('font_size', event.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Rounding (px)"
-              type="number"
-              variant="outlined"
-              value={createThemeValues.rounding_px}
-              onChange={(event) => handleCreateThemeChange('rounding_px', event.target.value)}
-              fullWidth
-            />
-          </Stack>
-          <TextField
-            label="Font family"
-            variant="outlined"
-            value={createThemeValues.font_family}
-            onChange={(event) => handleCreateThemeChange('font_family', event.target.value)}
-            fullWidth
-          />
-
-          <ThemePreview
-            title="Preview"
-            defaultSpeedPercentage={Number(createDefaultSpeed) || 0}
-            theme={buildThemeFromStrings(createThemeValues)}
-          />
-
-          <Button type="submit" variant="contained" color="success">
-            Create config
-          </Button>
-        </Stack>
-      </Box>
-
-      {error && (
-        <Typography variant="body2" color="error">
-          {error}
-        </Typography>
-      )}
-
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Widget configs
-        </Typography>
-        {loading ? (
-          <Typography variant="body2" color="text.secondary">
-            Loading configs...
-          </Typography>
-        ) : configs.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No widget configs found.
-          </Typography>
-        ) : (
-          <Stack spacing={1}>
-            {configs.map((config) => (
-              <Box
-                key={config.id}
-                className="user-list-item"
-                onClick={() => handleConfigClick(config)}
-              >
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Box>
-                    <Typography sx={{ fontWeight: 500 }}>{config.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {config.description}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    ID: {config.id}
-                  </Typography>
-                </Stack>
-              </Box>
+          <Select
+            size="small"
+            displayEmpty
+            value={selectedId}
+            onChange={(e) => handleSelectChange(e.target.value as number | 'new' | '')}
+            sx={{
+              minWidth: 200,
+              borderRadius: '8px',
+              fontSize: 14,
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+            }}
+          >
+            <MenuItem value="" disabled>
+              {loading ? 'Loading\u2026' : 'Select a widget'}
+            </MenuItem>
+            {configs.map((c) => (
+              <MenuItem key={c.id} value={c.id}>
+                {c.name}
+              </MenuItem>
             ))}
+            <MenuItem value="new" sx={{ fontWeight: 600, color: 'success.main' }}>
+              <AddIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'middle' }} />
+              New Config
+            </MenuItem>
+          </Select>
+        </Stack>
+
+        {hasSelection && (
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ContentCopyIcon />}
+              onClick={handleCopyJson}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            >
+              Copy JSON
+            </Button>
+            {isEditing && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<DeleteOutlineIcon />}
+                onClick={handleDelete}
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+              >
+                Delete
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              size="small"
+              color="success"
+              startIcon={<CloudUploadIcon />}
+              onClick={isEditing ? handleUpdate : handleCreate}
+              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            >
+              {isEditing ? 'Update' : 'Create'}
+            </Button>
           </Stack>
         )}
       </Box>
 
-      {selectedConfig && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit widget config
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mb: 1.5 }}>
+          {error}
+        </Typography>
+      )}
+
+      {!hasSelection && (
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 10,
+            color: 'text.secondary',
+            background: '#fff',
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Select a widget config or create a new one
           </Typography>
-          <Stack spacing={2.5}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Name"
-                variant="outlined"
-                value={editName}
-                onChange={(event) => setEditName(event.target.value)}
-                fullWidth
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editIsActive}
-                    onChange={(event) => setEditIsActive(event.target.checked)}
-                    color="success"
-                  />
-                }
-                label="Active"
-              />
-            </Stack>
-            <TextField
-              label="Description"
-              variant="outlined"
-              value={editDescription}
-              onChange={(event) => setEditDescription(event.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-            />
-            <TextField
-              label="Default speed percentage"
-              type="number"
-              variant="outlined"
-              value={editDefaultSpeed}
-              onChange={(event) => setEditDefaultSpeed(event.target.value)}
-              fullWidth
-            />
-
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              Theme
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Slow color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.slow_color}
-                onChange={(event) => handleEditThemeChange('slow_color', event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Fast color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.fast_color}
-                onChange={(event) => handleEditThemeChange('fast_color', event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Slider dot color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.slider_dot_color}
-                onChange={(event) =>
-                  handleEditThemeChange('slider_dot_color', event.target.value)
-                }
-                fullWidth
-              />
-            </Stack>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Background color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.background_color}
-                onChange={(event) =>
-                  handleEditThemeChange('background_color', event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Font color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.font_color}
-                onChange={(event) =>
-                  handleEditThemeChange('font_color', event.target.value)
-                }
-                fullWidth
-              />
-            </Stack>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Border color"
-                variant="outlined"
-                type="color"
-                value={editThemeValues.border_color}
-                onChange={(event) =>
-                  handleEditThemeChange('border_color', event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Border width"
-                type="number"
-                variant="outlined"
-                value={editThemeValues.border_width}
-                onChange={(event) =>
-                  handleEditThemeChange('border_width', event.target.value)
-                }
-                fullWidth
-              />
-            </Stack>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Font size (rem)"
-                type="number"
-                variant="outlined"
-                value={editThemeValues.font_size}
-                onChange={(event) => handleEditThemeChange('font_size', event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Rounding (px)"
-                type="number"
-                variant="outlined"
-                value={editThemeValues.rounding_px}
-                onChange={(event) =>
-                  handleEditThemeChange('rounding_px', event.target.value)
-                }
-                fullWidth
-              />
-            </Stack>
-            <TextField
-              label="Font family"
-              variant="outlined"
-              value={editThemeValues.font_family}
-              onChange={(event) => handleEditThemeChange('font_family', event.target.value)}
-              fullWidth
-            />
-
-            <ThemePreview
-              title="Preview"
-              defaultSpeedPercentage={Number(editDefaultSpeed) || 0}
-              theme={buildThemeFromStrings(editThemeValues)}
-            />
-
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleUpdate}
-              >
-                Save changes
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleDelete}
-              >
-                Delete config
-              </Button>
-            </Stack>
-          </Stack>
+          <Typography variant="body2">
+            Use the dropdown above to get started.
+          </Typography>
         </Box>
       )}
-    </Stack>
+
+      {hasSelection && (
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 0,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 3,
+            overflow: 'hidden',
+            background: '#fff',
+            minHeight: 500,
+            flexDirection: { xs: 'column', md: 'row' },
+          }}
+        >
+          {/* ────── Left sidebar ────── */}
+          <Box
+            sx={{
+              width: { xs: '100%', md: 280 },
+              flexShrink: 0,
+              borderRight: { md: '1px solid' },
+              borderBottom: { xs: '1px solid', md: 'none' },
+              borderColor: 'divider',
+              overflowY: 'auto',
+              maxHeight: { md: 'calc(100vh - 180px)' },
+              px: 2,
+              py: 1,
+            }}
+          >
+            {/* Config Settings */}
+            <Accordion
+              expanded={expanded.includes('config')}
+              onChange={() => handleAccordionToggle('config')}
+              sx={accordionSx}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummarySx}>
+                <SettingsIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13 }}>
+                  Config Settings
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0, pb: 1 }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Config Name
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Description
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Default Speed %
+                    </Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      fullWidth
+                      value={defaultSpeed}
+                      onChange={(e) => setDefaultSpeed(e.target.value)}
+                      slotProps={{
+                        input: {
+                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        },
+                      }}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        color="success"
+                        size="small"
+                      />
+                    }
+                    label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Active</Typography>}
+                  />
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Colours */}
+            <Accordion
+              expanded={expanded.includes('colours')}
+              onChange={() => handleAccordionToggle('colours')}
+              sx={accordionSx}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummarySx}>
+                <PaletteIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13 }}>
+                  Colours
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0, pb: 1 }}>
+                <ColorField label="Slider Slow Colour" value={themeValues.slider_slow_color} onChange={(v) => handleThemeChange('slider_slow_color', v)} />
+                <ColorField label="Slider Fast Colour" value={themeValues.slider_fast_color} onChange={(v) => handleThemeChange('slider_fast_color', v)} />
+                <ColorField label="Background Hue (Slow)" value={themeValues.background_hue_slow_color} onChange={(v) => handleThemeChange('background_hue_slow_color', v)} />
+                <ColorField label="Background Hue (Fast)" value={themeValues.background_hue_fast_color} onChange={(v) => handleThemeChange('background_hue_fast_color', v)} />
+                <ColorField label="Font Colour" value={themeValues.font_color} onChange={(v) => handleThemeChange('font_color', v)} />
+                <ColorField label="Background Colour" value={themeValues.background_color} onChange={(v) => handleThemeChange('background_color', v)} />
+                <ColorField label="Border Colour" value={themeValues.border_color} onChange={(v) => handleThemeChange('border_color', v)} />
+                <ColorField label="Slider Dot Colour" value={themeValues.slider_dot_color} onChange={(v) => handleThemeChange('slider_dot_color', v)} />
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Typography */}
+            <Accordion
+              expanded={expanded.includes('typography')}
+              onChange={() => handleAccordionToggle('typography')}
+              sx={accordionSx}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummarySx}>
+                <TextFieldsIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13 }}>
+                  Typography
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0, pb: 1 }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Font Family
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.font_family}
+                      onChange={(e) => handleThemeChange('font_family', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Base Font Size
+                    </Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      fullWidth
+                      value={themeValues.font_size}
+                      onChange={(e) => handleThemeChange('font_size', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Layout */}
+            <Accordion
+              expanded={expanded.includes('layout')}
+              onChange={() => handleAccordionToggle('layout')}
+              sx={accordionSx}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummarySx}>
+                <ViewQuiltIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13 }}>
+                  Layout
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0, pb: 1 }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Border Width
+                    </Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      fullWidth
+                      value={themeValues.border_width}
+                      onChange={(e) => handleThemeChange('border_width', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Rounding (px)
+                    </Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      fullWidth
+                      value={themeValues.rounding_px}
+                      onChange={(e) => handleThemeChange('rounding_px', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Widget Width
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.widget_width}
+                      onChange={(e) => handleThemeChange('widget_width', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* Labels & Text */}
+            <Accordion
+              expanded={expanded.includes('labels')}
+              onChange={() => handleAccordionToggle('labels')}
+              sx={accordionSx}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummarySx}>
+                <LabelIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13 }}>
+                  Labels &amp; Text
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0, pb: 1 }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Slider Label
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.slider_label}
+                      onChange={(e) => handleThemeChange('slider_label', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Scale Label (Slow)
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.scale_label_slow}
+                      onChange={(e) => handleThemeChange('scale_label_slow', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Scale Label (Fast)
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.scale_label_fast}
+                      onChange={(e) => handleThemeChange('scale_label_fast', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Info Text
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.info_text}
+                      onChange={(e) => handleThemeChange('info_text', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Mood Slow Text
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.mood_slow_text}
+                      onChange={(e) => handleThemeChange('mood_slow_text', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Mood Standard Text
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.mood_standard_text}
+                      onChange={(e) => handleThemeChange('mood_standard_text', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={fieldLabelSx}>
+                      Mood Fast Text
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={themeValues.mood_fast_text}
+                      onChange={(e) => handleThemeChange('mood_fast_text', e.target.value)}
+                      sx={fieldInputSx}
+                    />
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Box>
+
+          {/* ────── Right: Live Preview ────── */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {/* Preview header */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                px: 2.5,
+                py: 1,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <VisibilityIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: 13 }}>
+                  Live Preview
+                </Typography>
+              </Stack>
+              <Tooltip title="Refresh preview">
+                <IconButton size="small" onClick={() => setPreviewKey((k) => k + 1)}>
+                  <RefreshIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+
+            {/* Preview canvas */}
+            <LivePreview
+              key={previewKey}
+              name={name}
+              defaultSpeedPercentage={Number(defaultSpeed) || 50}
+              theme={buildThemeFromStrings(themeValues)}
+            />
+          </Box>
+        </Box>
+      )}
+    </Box>
   )
 }
 

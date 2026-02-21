@@ -87,8 +87,10 @@ export type SpeedEstimateAnchorsResponse = {
 }
 
 export type WidgetTheme = {
-  slow_color: string
-  fast_color: string
+  slider_slow_color: string
+  slider_fast_color: string
+  background_hue_slow_color: string
+  background_hue_fast_color: string
   font_color: string
   background_color: string
   border_color: string
@@ -97,6 +99,14 @@ export type WidgetTheme = {
   font_family: string
   rounding_px: number
   slider_dot_color: string
+  slider_label: string
+  scale_label_slow: string
+  scale_label_fast: string
+  info_text: string
+  mood_slow_text: string
+  mood_standard_text: string
+  mood_fast_text: string
+  widget_width: string
 }
 
 export type WidgetConfig = {

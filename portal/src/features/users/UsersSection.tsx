@@ -1,5 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import LockRoundedIcon from '@mui/icons-material/LockRounded'
+import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { UserSummary } from '../../types/api'
 
 type UsersSectionProps = {
@@ -161,57 +175,90 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
 
   return (
     <Stack spacing={3}>
-      <Box component="form" onSubmit={handleCreateUser} noValidate>
+      {/* ── Create User ── */}
+      <Box className="section-card" component="form" onSubmit={handleCreateUser} noValidate>
         <Stack spacing={2.5}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            Create user
-          </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Username"
-              variant="outlined"
-              value={createUsername}
-              onChange={(event) => setCreateUsername(event.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Role"
-              variant="outlined"
-              select
-              value={createRole}
-              onChange={(event) => setCreateRole(event.target.value)}
-              fullWidth
-              required
-            >
-              <MenuItem value="captain">captain</MenuItem>
-              <MenuItem value="admin">admin</MenuItem>
-            </TextField>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Password"
-              type="password"
-              variant="outlined"
-              value={createPassword}
-              onChange={(event) => setCreatePassword(event.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Operator ID"
-              variant="outlined"
-              value={operatorId ?? ''}
-              fullWidth
-              disabled
-              helperText={
-                operatorId === null
-                  ? 'Loaded from your login profile when available.'
-                  : 'Linked operator for new users.'
-              }
-            />
-          </Stack>
-          <Button type="submit" variant="contained" color="success">
+          <Box className="section-header">
+            <Box>
+              <h2>Create User</h2>
+              <Typography variant="body2" className="subtitle">Add a new user to the platform</Typography>
+            </Box>
+          </Box>
+
+          {/* Account info */}
+          <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
+            <CardContent>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                <PersonRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                  Account Info
+                </Typography>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Username"
+                  variant="outlined"
+                  size="small"
+                  value={createUsername}
+                  onChange={(event) => setCreateUsername(event.target.value)}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Role"
+                  variant="outlined"
+                  size="small"
+                  select
+                  value={createRole}
+                  onChange={(event) => setCreateRole(event.target.value)}
+                  fullWidth
+                  required
+                >
+                  <MenuItem value="captain">Captain</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </TextField>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {/* Credentials */}
+          <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
+            <CardContent>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                <LockRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                  Credentials
+                </Typography>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Password"
+                  type="password"
+                  variant="outlined"
+                  size="small"
+                  value={createPassword}
+                  onChange={(event) => setCreatePassword(event.target.value)}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Operator ID"
+                  variant="outlined"
+                  size="small"
+                  value={operatorId ?? ''}
+                  fullWidth
+                  disabled
+                  helperText={
+                    operatorId === null
+                      ? 'Loaded from your login profile when available.'
+                      : 'Linked operator for new users.'
+                  }
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Button type="submit" variant="contained" color="success" sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}>
             Create user
           </Button>
         </Stack>
@@ -223,10 +270,14 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
         </Typography>
       )}
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Users
-        </Typography>
+      {/* ── Users list ── */}
+      <Box className="section-card">
+        <Box className="section-header">
+          <Box>
+            <h2>Users</h2>
+            <Typography variant="body2" className="subtitle">All registered platform users</Typography>
+          </Box>
+        </Box>
         {usersLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading users...
@@ -236,73 +287,132 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
             No users found for this operator.
           </Typography>
         ) : (
-          <Stack spacing={1}>
-            {users.map((user) => (
-              <Box
-                key={user.id}
-                className="user-list-item"
-                onClick={() => handleUserClick(user)}
-              >
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
+          <Stack spacing={1.5}>
+            {users.map((user) => {
+              const isSelected = selectedUser?.id === user.id
+              const isAdmin = user.role === 'admin'
+              return (
+                <Card
+                  key={user.id}
+                  variant="outlined"
+                  onClick={() => handleUserClick(user)}
+                  sx={{
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    borderColor: isSelected ? '#1976d2' : undefined,
+                    borderWidth: isSelected ? 2 : 1,
+                    bgcolor: isSelected ? '#f0f7ff' : '#fafafa',
+                    '&:hover': { borderColor: '#1976d2', bgcolor: '#f5faff', transform: 'translateY(-1px)', boxShadow: 1 },
+                  }}
                 >
-                  <Box>
-                    <Typography sx={{ fontWeight: 500 }}>{user.username}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Role: {user.role}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    ID: {user.id}
-                  </Typography>
-                </Stack>
-              </Box>
-            ))}
+                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Box>
+                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                          <PersonRoundedIcon sx={{ fontSize: 18, color: '#1976d2' }} />
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                            {user.username}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            icon={isAdmin ? <AdminPanelSettingsRoundedIcon /> : <PersonRoundedIcon />}
+                            label={user.role}
+                            color={isAdmin ? 'warning' : 'info'}
+                            variant="outlined"
+                            sx={{ fontWeight: 500, textTransform: 'capitalize', height: 24 }}
+                          />
+                        </Stack>
+                      </Box>
+                      <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
+                        #{user.id}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </Stack>
         )}
       </Box>
 
+      {/* ── Edit User ── */}
       {selectedUser && (
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Edit user
-          </Typography>
+        <Box className="section-card">
+          <Box className="section-header">
+            <Box>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
+                <h2>Edit User</h2>
+              </Stack>
+              <Typography variant="body2" className="subtitle">
+                Editing <strong>{selectedUser.username}</strong>
+              </Typography>
+            </Box>
+          </Box>
+
           <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Username"
-                variant="outlined"
-                value={editUsername}
-                onChange={(event) => setEditUsername(event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Role"
-                variant="outlined"
-                select
-                value={editRole}
-                onChange={(event) => setEditRole(event.target.value)}
-                fullWidth
-              >
-                <MenuItem value="captain">captain</MenuItem>
-                <MenuItem value="admin">admin</MenuItem>
-              </TextField>
-            </Stack>
-            <TextField
-              label="New password (optional)"
-              type="password"
-              variant="outlined"
-              value={editPassword}
-              onChange={(event) => setEditPassword(event.target.value)}
-              fullWidth
-            />
+            {/* Account info */}
+            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                  <PersonRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                    Account Info
+                  </Typography>
+                </Stack>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label="Username"
+                    variant="outlined"
+                    size="small"
+                    value={editUsername}
+                    onChange={(event) => setEditUsername(event.target.value)}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Role"
+                    variant="outlined"
+                    size="small"
+                    select
+                    value={editRole}
+                    onChange={(event) => setEditRole(event.target.value)}
+                    fullWidth
+                  >
+                    <MenuItem value="captain">Captain</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                  </TextField>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Password */}
+            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                  <LockRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                    Change Password
+                  </Typography>
+                </Stack>
+                <TextField
+                  label="New password (leave blank to keep current)"
+                  type="password"
+                  variant="outlined"
+                  size="small"
+                  value={editPassword}
+                  onChange={(event) => setEditPassword(event.target.value)}
+                  fullWidth
+                />
+              </CardContent>
+            </Card>
+
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Button
                 variant="contained"
                 color="success"
                 onClick={handleUpdateUser}
+                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, flex: 1 }}
               >
                 Save changes
               </Button>
@@ -310,6 +420,7 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
                 variant="outlined"
                 color="error"
                 onClick={handleDeleteUser}
+                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
               >
                 Delete user
               </Button>
