@@ -75,7 +75,7 @@ const BASE_STYLES = `
     font-size: var(--pcw-base-font-size, 16px);
     color: var(--pcw-text, #0b1f29);
     border-radius: var(--pcw-rounding, 24px);
-    padding: 2.5rem 2rem;
+    padding: 2.5em 2em;
     width: var(--pcw-width, min(640px, 100%));
     box-sizing: border-box;
     border: var(--pcw-border-width, 1px) solid var(--pcw-border, rgba(12, 59, 46, 0.12));
@@ -87,19 +87,19 @@ const BASE_STYLES = `
   /* ---------- Control section (label + info + slider) ---------- */
 
   .pcw-control {
-    margin-bottom: 2rem;
+    margin-bottom: 2em;
   }
 
   .pcw-control-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.8rem;
+    gap: 1em;
+    margin-bottom: 0.8em;
   }
 
   .pcw-slider-label {
-    font-size: 1.35rem;
+    font-size: 1.35em;
     font-weight: 700;
     color: var(--pcw-text, rgba(11, 31, 41, 0.92));
   }
@@ -111,7 +111,7 @@ const BASE_STYLES = `
     border-radius: 50%;
     border: 1px solid rgba(11, 31, 41, 0.2);
     background: rgba(255, 255, 255, 0.6);
-    font-size: 1rem;
+    font-size: 1em;
     font-weight: 700;
     color: rgba(11, 31, 41, 0.8);
     cursor: pointer;
@@ -129,13 +129,13 @@ const BASE_STYLES = `
   }
 
   .pcw-info {
-    padding: 0.85rem 1rem;
-    margin-bottom: 1rem;
+    padding: 0.85em 1em;
+    margin-bottom: 1em;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.65);
     border: 1px solid rgba(6, 65, 58, 0.12);
     color: rgba(11, 31, 41, 0.78);
-    font-size: 0.95rem;
+    font-size: 0.95em;
     line-height: 1.5;
   }
 
@@ -148,9 +148,9 @@ const BASE_STYLES = `
   .pcw-slider-shell {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.5em;
     position: relative;
-    padding-top: 1.8rem;
+    padding-top: 1.8em;
   }
 
   .pcw-slider {
@@ -216,11 +216,11 @@ const BASE_STYLES = `
     position: absolute;
     top: 0;
     transform: translateX(-50%);
-    padding: 0.2rem 0.55rem;
+    padding: 0.2em 0.55em;
     border-radius: 999px;
     background: var(--pcw-indicator-bg, rgba(11, 31, 41, 0.85));
     color: #ffffff;
-    font-size: 0.85rem;
+    font-size: 0.85em;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
@@ -230,7 +230,7 @@ const BASE_STYLES = `
   .pcw-slider-scale {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: 0.8em;
     color: var(--pcw-text, rgba(11, 31, 41, 0.6));
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -241,15 +241,15 @@ const BASE_STYLES = `
   .pcw-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 1em;
+    margin-bottom: 1em;
   }
 
   .pcw-stat {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 1rem;
+    gap: 0.35em;
+    padding: 1em;
     border-radius: 16px;
     border: 1px solid rgba(11, 31, 41, 0.08);
     background: rgba(255, 255, 255, 0.68);
@@ -257,14 +257,14 @@ const BASE_STYLES = `
   }
 
   .pcw-stat-label {
-    font-size: 0.85rem;
+    font-size: 0.85em;
     color: rgba(11, 31, 41, 0.65);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
 
   .pcw-stat-value {
-    font-size: 1.35rem;
+    font-size: 1.35em;
     font-weight: 700;
     color: rgba(11, 31, 41, 0.9);
   }
@@ -273,7 +273,7 @@ const BASE_STYLES = `
 
   .pcw-footnote {
     margin-top: 12px;
-    font-size: 0.75rem;
+    font-size: 0.75em;
     text-align: center;
     color: rgba(11, 31, 41, 0.55);
   }
@@ -290,11 +290,11 @@ const BASE_STYLES = `
 
   @media (max-width: 640px) {
     .pcw-root {
-      padding: 2rem 1.4rem;
+      padding: 2em 1.4em;
     }
 
     .pcw-stat-value {
-      font-size: 1.18rem;
+      font-size: 1.18em;
     }
   }
 `;
@@ -1062,9 +1062,15 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       const metricsData = interpolateMetrics(config, rawSliderValue);
       const normalized = metricsData.sliderValue;
 
-      // Background gradient blends between bgSlow and bgFast colours.
-      // The bottom stop uses the primaryBg colour from the theme ("background_color").
-      const blendedBg = mixColors(palette.bgSlow, palette.bgFast, normalized);
+      // Background gradient passes through primaryBg at the standard/middle position
+      // (normalized = 0.5) so the widget never mixes the slow and fast hue colours
+      // directly, which would produce an ugly muddy blend in the centre.
+      // Below standard: interpolate from bgSlow → primaryBg
+      // Above standard: interpolate from primaryBg → bgFast
+      const blendedBg =
+        normalized <= 0.5
+          ? mixColors(palette.bgSlow, palette.primaryBg, normalized / 0.5)
+          : mixColors(palette.primaryBg, palette.bgFast, (normalized - 0.5) / 0.5);
       root.style.background = `linear-gradient(180deg, ${blendedBg} 0%, ${palette.primaryBg} 100%)`;
 
       // Mood accent colour derived from the same blend
