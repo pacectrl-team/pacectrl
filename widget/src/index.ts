@@ -814,75 +814,75 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       // Slider track colours (the filled/unfilled portions of the range input)
       sliderSlow: getThemeColor(
         config.theme,
-        ["slider_slow_color", "sliderSlowColor", "slow_color", "slowColor", "accent_slow", "ecoColor"],
+        ["slider_slow_color"],
         "#0f9d58"
       ),
       sliderFast: getThemeColor(
         config.theme,
-        ["slider_fast_color", "sliderFastColor", "fast_color", "fastColor", "accent_fast", "rushColor"],
+        ["slider_fast_color"],
         "#c0392b"
       ),
       // Background card gradient hue endpoints (HSL colour strings)
       bgSlow: getThemeColor(
         config.theme,
-        ["background_hue_slow_color", "backgroundHueSlowColor"],
+        ["background_hue_slow_color"],
         "hsl(140, 82%, 92%)"
       ),
       bgFast: getThemeColor(
         config.theme,
-        ["background_hue_fast_color", "backgroundHueFastColor"],
+        ["background_hue_fast_color"],
         "hsl(0, 82%, 92%)"
       ),
       text: getThemeColor(
         config.theme,
-        ["font_color", "fontColor", "textColor"],
+        ["font_color"],
         "#0b1f29"
       ),
       border: getThemeColor(
         config.theme,
-        ["border_color", "borderColor", "strokeColor"],
+        ["border_color"],
         "rgba(12, 59, 46, 0.12)"
       ),
       thumbColor: getThemeColor(
         config.theme,
-        ["slider_dot_color", "sliderDotColor", "thumbColor"],
+        ["slider_dot_color"],
         ""
       ),
       // Primary (bottom) background colour – sits at the 100% stop of the card gradient
       primaryBg: getThemeColor(
         config.theme,
-        ["background_color", "backgroundColor", "primary_background"],
+        ["background_color"],
         "#ffffff"
       ),
     };
 
     const rounding = getThemeNumber(
       config.theme,
-      ["rounding_px", "rounding", "roundingPx", "border_radius"],
+      ["rounding_px"],
       24
     );
 
     const borderWidth = getThemeNumber(
       config.theme,
-      ["border_width", "borderWidth"],
+      ["border_width"],
       1
     );
 
     const fontFamily = getThemeString(
       config.theme,
-      ["font_family", "fontFamily"],
+      ["font_family"],
       ""
     );
 
     const baseFontSize = getThemeNumber(
       config.theme,
-      ["font_size", "fontSize", "base_font_size"],
+      ["font_size"],
       16
     );
 
     const widgetWidth = getThemeString(
       config.theme,
-      ["widget_width", "widgetWidth"],
+      ["widget_width"],
       ""
     );
 
@@ -890,22 +890,22 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
     const labels = {
       sliderLabel: getThemeString(
         config.theme,
-        ["slider_label", "sliderLabel"],
+        ["slider_label"],
         "Vote on the trip speed"
       ),
       scaleSlow: getThemeString(
         config.theme,
-        ["scale_label_slow", "scaleLabelSlow"],
+        ["scale_label_slow"],
         "Calmer seas"
       ),
       scaleFast: getThemeString(
         config.theme,
-        ["scale_label_fast", "scaleLabelFast"],
+        ["scale_label_fast"],
         "Arrive sooner"
       ),
       infoText: getThemeString(
         config.theme,
-        ["info_text", "infoText"],
+        ["info_text"],
         "Drag the slider to vote on how fast the ferry should sail. " +
           "Slower speeds add travel time but cut CO\u2082 emissions. " +
           "Faster speeds do the opposite. Fuel use climbs quickly with " +
@@ -913,17 +913,17 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       ),
       moodSlow: getThemeString(
         config.theme,
-        ["mood_slow_text", "moodSlowText"],
+        ["mood_slow_text"],
         "Plenty of time"
       ),
       moodStandard: getThemeString(
         config.theme,
-        ["mood_standard_text", "moodStandardText"],
+        ["mood_standard_text"],
         "Balanced"
       ),
       moodFast: getThemeString(
         config.theme,
-        ["mood_fast_text", "moodFastText"],
+        ["mood_fast_text"],
         "Racing"
       ),
     };
