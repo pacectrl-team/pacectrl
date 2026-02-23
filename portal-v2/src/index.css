@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+ * Shared utility component classes for forms & buttons.
+ * We use @layer so Tailwind can still override if needed.
+ */
+@layer components {
+  /* Standard text input / select */
+  .input {
+    @apply w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white
+           focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition;
+  }
+
+  /* Primary CTA button */
+  .btn-primary {
+    @apply flex items-center gap-2 px-4 py-2 text-sm font-medium bg-teal-600 hover:bg-teal-500
+           disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer;
+  }
+
+  /* Ghost / secondary button */
+  .btn-ghost {
+    @apply px-4 py-2 text-sm font-medium text-slate-400 hover:text-white
+           bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer;
+  }
+}
