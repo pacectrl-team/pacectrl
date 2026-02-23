@@ -231,7 +231,7 @@ const BASE_STYLES = `
     display: flex;
     justify-content: space-between;
     font-size: 0.8rem;
-    color: rgba(11, 31, 41, 0.6);
+    color: var(--pcw-text, rgba(11, 31, 41, 0.6));
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
