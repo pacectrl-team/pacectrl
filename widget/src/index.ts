@@ -848,6 +848,12 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
         ["slider_dot_color", "sliderDotColor", "thumbColor"],
         ""
       ),
+      // Primary (bottom) background colour – sits at the 100% stop of the card gradient
+      primaryBg: getThemeColor(
+        config.theme,
+        ["background_color", "backgroundColor", "primary_background"],
+        "#ffffff"
+      ),
     };
 
     const rounding = getThemeNumber(
@@ -1056,9 +1062,10 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       const metricsData = interpolateMetrics(config, rawSliderValue);
       const normalized = metricsData.sliderValue;
 
-      // Background gradient blends between bgSlow and bgFast colours
+      // Background gradient blends between bgSlow and bgFast colours.
+      // The bottom stop uses the primaryBg colour from the theme ("background_color").
       const blendedBg = mixColors(palette.bgSlow, palette.bgFast, normalized);
-      root.style.background = `linear-gradient(180deg, ${blendedBg} 0%, #ffffff 100%)`;
+      root.style.background = `linear-gradient(180deg, ${blendedBg} 0%, ${palette.primaryBg} 100%)`;
 
       // Mood accent colour derived from the same blend
       const moodAccent = mixColors(palette.sliderSlow, palette.sliderFast, normalized);
