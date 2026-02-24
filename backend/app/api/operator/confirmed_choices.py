@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_operator_from_jwt_or_secret
+from app.models.operator import Operator
 from app.models.user import User
 from app.models.confirmed_choice import ConfirmedChoice
 from app.models.choice_intent import ChoiceIntent
@@ -19,16 +20,22 @@ router = APIRouter(prefix="/confirmed-choices", tags=["confirmed-choices"])
 def create_confirmed_choice(
     payload: ConfirmedChoiceCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    operator: Operator = Depends(get_operator_from_jwt_or_secret),
 ):
-    """Create a confirmed choice from a choice intent and booking ID."""
+    """
+    Create a confirmed choice from a choice intent and booking ID.
 
-    # Get the choice intent data first to derive voyage_id
+    Accepts either a JWT Bearer token or an X-Webhook-Secret header,
+    so operators can call this directly from their booking backend
+    without needing a user login.
+    """
+
+    # Get the choice intent to derive the voyage
     intent = db.query(ChoiceIntent).filter(ChoiceIntent.intent_id == payload.intent_id).first()
     if not intent:
         raise HTTPException(status_code=404, detail="Choice intent not found")
 
-    # Check if a confirmed choice already exists for this voyage + booking (do this early for performance)
+    # Idempotency check — return existing record if this booking was already confirmed
     existing = db.query(ConfirmedChoice).filter(
         ConfirmedChoice.voyage_id == intent.voyage_id,
         ConfirmedChoice.booking_id == payload.booking_id
@@ -40,10 +47,10 @@ def create_confirmed_choice(
     if datetime.now(timezone.utc) > intent.expires_at:
         raise HTTPException(status_code=400, detail="Choice intent has expired")
 
-    # Verify the voyage belongs to the user's operator
+    # Verify the voyage belongs to the authenticated operator
     voyage = db.query(Voyage).filter(
         Voyage.id == intent.voyage_id,
-        Voyage.operator_id == current_user.operator_id
+        Voyage.operator_id == operator.id
     ).first()
     if not voyage:
         raise HTTPException(status_code=404, detail="Voyage not found or access denied")

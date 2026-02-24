@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_admin
 from app.core.database import get_db
+from app.core.security import hash_webhook_secret
 from app.models.operator import Operator
 from app.schemas.operator import Operator as OperatorSchema, OperatorCreate
 
@@ -148,8 +149,9 @@ def generate_webhook_secret(
     # Generate a secure random key (32 bytes, base64 encoded for URL safety)
     new_key = secrets.token_urlsafe(32)
 
-    # Update operator with new webhook secret
-    db_operator.webhook_secret = new_key
+    # Hash the secret before storing — the plain-text value is only returned
+    # once here and never saved, so even a DB leak won't expose the secret.
+    db_operator.webhook_secret = hash_webhook_secret(new_key)
     db.commit()
     db.refresh(db_operator)
 
