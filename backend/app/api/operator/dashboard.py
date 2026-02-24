@@ -52,9 +52,6 @@ def get_voyages_dashboard(
 
     Includes global headline numbers, a confirmed-choices time-series for the
     last 30 days, and per-voyage intent/choice statistics.
-
-    Note: median values use PostgreSQL's percentile_cont. They will be null when
-    running against SQLite (local dev).
     """
     operator_id = current_user.operator_id
     now = datetime.now(tz=timezone.utc)
@@ -127,44 +124,24 @@ def get_voyages_dashboard(
     intent_by_voyage: Dict[int, object] = {row.voyage_id: row for row in intent_agg_rows}
 
     # --- Confirmed-choice aggregates (one row per voyage) ---
-    # percentile_cont is PostgreSQL-only; we fall back gracefully for SQLite.
     cc_agg_rows = []
-    median_supported = True
     if voyage_ids:
-        try:
-            cc_agg_rows = (
-                db.query(
-                    ConfirmedChoice.voyage_id,
-                    func.count().label("confirmed_choices_count"),
-                    func.avg(ConfirmedChoice.delta_pct_from_standard).label("avg_delta_pct"),
-                    func.percentile_cont(0.5)
-                    .within_group(ConfirmedChoice.delta_pct_from_standard.asc())
-                    .label("median_delta_pct"),
-                    func.min(ConfirmedChoice.delta_pct_from_standard).label("min_delta_pct"),
-                    func.max(ConfirmedChoice.delta_pct_from_standard).label("max_delta_pct"),
-                    func.avg(ConfirmedChoice.slider_value).label("avg_slider_value"),
-                )
-                .filter(ConfirmedChoice.voyage_id.in_(voyage_ids))
-                .group_by(ConfirmedChoice.voyage_id)
-                .all()
+        cc_agg_rows = (
+            db.query(
+                ConfirmedChoice.voyage_id,
+                func.count().label("confirmed_choices_count"),
+                func.avg(ConfirmedChoice.delta_pct_from_standard).label("avg_delta_pct"),
+                func.percentile_cont(0.5)
+                .within_group(ConfirmedChoice.delta_pct_from_standard.asc())
+                .label("median_delta_pct"),
+                func.min(ConfirmedChoice.delta_pct_from_standard).label("min_delta_pct"),
+                func.max(ConfirmedChoice.delta_pct_from_standard).label("max_delta_pct"),
+                func.avg(ConfirmedChoice.slider_value).label("avg_slider_value"),
             )
-        except Exception:
-            # percentile_cont not supported (SQLite) — retry without median
-            median_supported = False
-            db.rollback()
-            cc_agg_rows = (
-                db.query(
-                    ConfirmedChoice.voyage_id,
-                    func.count().label("confirmed_choices_count"),
-                    func.avg(ConfirmedChoice.delta_pct_from_standard).label("avg_delta_pct"),
-                    func.min(ConfirmedChoice.delta_pct_from_standard).label("min_delta_pct"),
-                    func.max(ConfirmedChoice.delta_pct_from_standard).label("max_delta_pct"),
-                    func.avg(ConfirmedChoice.slider_value).label("avg_slider_value"),
-                )
-                .filter(ConfirmedChoice.voyage_id.in_(voyage_ids))
-                .group_by(ConfirmedChoice.voyage_id)
-                .all()
-            )
+            .filter(ConfirmedChoice.voyage_id.in_(voyage_ids))
+            .group_by(ConfirmedChoice.voyage_id)
+            .all()
+        )
 
     cc_by_voyage: Dict[int, object] = {row.voyage_id: row for row in cc_agg_rows}
 
@@ -197,20 +174,16 @@ def get_voyages_dashboard(
         )
         avg_delta_all = float(avg_row) if avg_row is not None else None
 
-        if median_supported:
-            try:
-                median_row = (
-                    db.query(
-                        func.percentile_cont(0.5).within_group(
-                            ConfirmedChoice.delta_pct_from_standard.asc()
-                        )
-                    )
-                    .filter(ConfirmedChoice.voyage_id.in_(voyage_ids))
-                    .scalar()
+        median_row = (
+            db.query(
+                func.percentile_cont(0.5).within_group(
+                    ConfirmedChoice.delta_pct_from_standard.asc()
                 )
-                median_delta_all = float(median_row) if median_row is not None else None
-            except Exception:
-                db.rollback()
+            )
+            .filter(ConfirmedChoice.voyage_id.in_(voyage_ids))
+            .scalar()
+        )
+        median_delta_all = float(median_row) if median_row is not None else None
 
     # --- Confirmed choices per day for the last 30 days (time-series) ---
     per_day_rows = []
@@ -303,11 +276,7 @@ def get_voyages_dashboard(
                 expired_intents=int(intents.expired_intents) if intents else 0,
                 confirmed_choices_count=int(cc.confirmed_choices_count) if cc else 0,
                 avg_delta_pct=avg_delta_pct_for_voyage,
-                median_delta_pct=(
-                    float(cc.median_delta_pct)
-                    if cc and median_supported and hasattr(cc, "median_delta_pct") and cc.median_delta_pct is not None
-                    else None
-                ),
+                median_delta_pct=float(cc.median_delta_pct) if cc and cc.median_delta_pct is not None else None,
                 min_delta_pct=float(cc.min_delta_pct) if cc and cc.min_delta_pct is not None else None,
                 max_delta_pct=float(cc.max_delta_pct) if cc and cc.max_delta_pct is not None else None,
                 avg_slider_value=float(cc.avg_slider_value) if cc and cc.avg_slider_value is not None else None,
