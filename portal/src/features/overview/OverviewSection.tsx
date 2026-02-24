@@ -19,7 +19,6 @@ import {
 import SailingIcon from '@mui/icons-material/SailingRounded'
 import CheckCircleIcon from '@mui/icons-material/CheckCircleRounded'
 import TouchAppIcon from '@mui/icons-material/TouchAppRounded'
-import TrendingUpIcon from '@mui/icons-material/TrendingUpRounded'
 import BarChartIcon from '@mui/icons-material/BarChartRounded'
 import RouteIcon from '@mui/icons-material/RouteRounded'
 import WidgetsIcon from '@mui/icons-material/WidgetsRounded'
@@ -65,12 +64,6 @@ const sectionTitle = {
 /* ── Helpers ── */
 const fmt = (v: number | null | undefined) =>
   v != null ? v.toFixed(1) : '—'
-
-const fmtDate = (iso: string | null | undefined) => {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 const fmtDayShort = (iso: string) => {
   const d = new Date(iso)
