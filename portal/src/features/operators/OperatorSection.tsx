@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
 import BusinessIcon from '@mui/icons-material/BusinessRounded'
 import type { OperatorSummary } from '../../types/api'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 const OPERATOR_URL_BASE =
   'https://pacectrl-production.up.railway.app/api/v1/operator/operators/'
@@ -23,7 +24,7 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(`${OPERATOR_URL_BASE}${operatorId}`, {
+        const response = await authFetch(`${OPERATOR_URL_BASE}${operatorId}`, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -36,8 +37,8 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
 
         const data = (await response.json()) as OperatorSummary
         setOperator(data)
-      } catch {
-        setError('Unable to load operator information.')
+      } catch (err) {
+        setError(err instanceof ForbiddenError ? err.message : 'Unable to load operator information.')
       } finally {
         setLoading(false)
       }

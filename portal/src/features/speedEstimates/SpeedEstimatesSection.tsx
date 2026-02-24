@@ -5,15 +5,21 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Divider,
+  IconButton,
   Stack,
   TextField,
   Typography,
   MenuItem,
 } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import type {
   AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
@@ -64,11 +70,26 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   const [entries, setEntries] = useState<SpeedEstimateEntry[]>([])
 
+  // ── Modal editing state ──
+  const [editOpen, setEditOpen] = useState(false)
+  const [editEntry, setEditEntry] = useState<SpeedEstimateEntry | null>(null)
+  const [editSlowSpeed, setEditSlowSpeed] = useState('')
+  const [editSlowEmissions, setEditSlowEmissions] = useState('')
+  const [editSlowDelta, setEditSlowDelta] = useState('')
+  const [editStdSpeed, setEditStdSpeed] = useState('')
+  const [editStdEmissions, setEditStdEmissions] = useState('')
+  const [editStdDelta, setEditStdDelta] = useState('')
+  const [editFastSpeed, setEditFastSpeed] = useState('')
+  const [editFastEmissions, setEditFastEmissions] = useState('')
+  const [editFastDelta, setEditFastDelta] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+
   const fetchRoutes = async () => {
     if (!token) return
 
     try {
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -81,8 +102,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       const data = (await response.json()) as RouteSummary[]
       setRoutes(data)
-    } catch {
-      setError('Unable to load routes. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
     }
   }
 
@@ -90,7 +111,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     if (!token) return
 
     try {
-      const response = await fetch(SHIPS_URL, {
+      const response = await authFetch(SHIPS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -103,8 +124,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       const data = (await response.json()) as ShipSummary[]
       setShips(data)
-    } catch {
-      setError('Unable to load ships. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
     }
   }
 
@@ -112,7 +133,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     if (!token) return
 
     try {
-      const response = await fetch(SPEED_ESTIMATES_URL, {
+      const response = await authFetch(SPEED_ESTIMATES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -168,8 +189,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         .filter((entry): entry is SpeedEstimateEntry => entry !== null)
 
       setEntries(nextEntries)
-    } catch {
-      setError('Unable to load speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
     }
   }
 
@@ -207,7 +228,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const loadFromApi = async (routeIdNum: number, shipIdNum: number) => {
     setLoading(true)
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${routeIdNum}/ships/${shipIdNum}/anchors`,
         {
           method: 'GET',
@@ -268,25 +289,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       })
 
       setSuccess('Loaded speed estimates.')
-    } catch {
-      setError('Unable to load speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleLoad = async () => {
-    if (!token) return
-    resetMessages()
-
-    const routeIdNum = Number(routeId)
-    const shipIdNum = Number(shipId)
-
-    if (!routeIdNum || !shipIdNum) {
-      setError('Route ID and Ship ID are required and must be numbers.')
-      return
-    }
-    await loadFromApi(routeIdNum, shipIdNum)
   }
 
   const handleSave = async () => {
@@ -338,7 +345,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
     setLoading(true)
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${routeIdNum}/ships/${shipIdNum}/anchors`,
         {
           method: 'PUT',
@@ -371,8 +378,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       })
 
       setSuccess('Speed estimates saved successfully.')
-    } catch {
-      setError('Unable to save speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -385,6 +392,97 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     // Use existing data for a snappy UX; user can then Save which
     // persists through the anchors API for this route+ship.
     applyDataToForm(entry.data)
+  }
+
+  // ── Modal helpers ──
+  const openEditModal = (entry: SpeedEstimateEntry) => {
+    setEditEntry(entry)
+    setEditSlowSpeed(String(entry.data.slow.speed_knots))
+    setEditSlowEmissions(String(entry.data.slow.expected_emissions_kg_co2))
+    setEditSlowDelta(String(entry.data.slow.expected_arrival_delta_minutes))
+    setEditStdSpeed(String(entry.data.standard.speed_knots))
+    setEditStdEmissions(String(entry.data.standard.expected_emissions_kg_co2))
+    setEditStdDelta(String(entry.data.standard.expected_arrival_delta_minutes))
+    setEditFastSpeed(String(entry.data.fast.speed_knots))
+    setEditFastEmissions(String(entry.data.fast.expected_emissions_kg_co2))
+    setEditFastDelta(String(entry.data.fast.expected_arrival_delta_minutes))
+    setEditError('')
+    setEditLoading(false)
+    setEditOpen(true)
+  }
+
+  const closeEditModal = () => {
+    setEditOpen(false)
+    setEditEntry(null)
+  }
+
+  const handleEditSave = async () => {
+    if (!editEntry || !token) return
+
+    const fields = [
+      editSlowSpeed, editSlowEmissions, editSlowDelta,
+      editStdSpeed, editStdEmissions, editStdDelta,
+      editFastSpeed, editFastEmissions, editFastDelta,
+    ]
+
+    if (fields.some((v) => v === '')) {
+      setEditError('Fill in all slow, standard and fast fields before saving.')
+      return
+    }
+
+    const body: SpeedAnchorsEstimate = {
+      slow: {
+        speed_knots: Number(editSlowSpeed),
+        expected_emissions_kg_co2: Number(editSlowEmissions),
+        expected_arrival_delta_minutes: Number(editSlowDelta),
+      },
+      standard: {
+        speed_knots: Number(editStdSpeed),
+        expected_emissions_kg_co2: Number(editStdEmissions),
+        expected_arrival_delta_minutes: Number(editStdDelta),
+      },
+      fast: {
+        speed_knots: Number(editFastSpeed),
+        expected_emissions_kg_co2: Number(editFastEmissions),
+        expected_arrival_delta_minutes: Number(editFastDelta),
+      },
+    }
+
+    setEditLoading(true)
+    setEditError('')
+    try {
+      const response = await authFetch(
+        `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${editEntry.routeId}/ships/${editEntry.shipId}/anchors`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        },
+      )
+
+      if (!response.ok) throw new Error('Failed to save')
+
+      setEntries((prev) => {
+        const idx = prev.findIndex(
+          (e) => e.routeId === editEntry.routeId && e.shipId === editEntry.shipId,
+        )
+        const updated: SpeedEstimateEntry = { ...editEntry, data: body }
+        if (idx === -1) return [...prev, updated]
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      })
+
+      closeEditModal()
+      setSuccess('Speed estimates updated successfully.')
+    } catch (err) {
+      setEditError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   return (
@@ -601,20 +699,12 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button
-            variant="outlined"
-            color="success"
-            onClick={handleLoad}
-            disabled={loading}
-          >
-            Load
-          </Button>
-          <Button
             variant="contained"
             color="success"
             onClick={handleSave}
             disabled={loading}
           >
-            Save
+            Create
           </Button>
         </Stack>
 
@@ -642,7 +732,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                       transition: 'all 0.15s',
                       '&:hover': { borderColor: '#27AE60', boxShadow: '0 2px 12px rgba(39,174,96,0.12)' },
                     }}
-                    onClick={() => handleSelectEntry(entry)}
+                    onClick={() => openEditModal(entry)}
                   >
                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                       {/* Header */}
@@ -735,6 +825,89 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         )}
       </Stack>
       </Box>
+
+      {/* ── Edit Modal ── */}
+      <Dialog
+        open={editOpen}
+        onClose={closeEditModal}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          backdrop: {
+            sx: { backdropFilter: 'blur(6px)', backgroundColor: 'rgba(0,0,0,0.35)' },
+          },
+        }}
+        PaperProps={{ sx: { borderRadius: '16px' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Edit Speed Estimates
+            {editEntry && (
+              <Typography component="span" variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
+                {routes.find((r) => r.id === editEntry.routeId)?.name ?? `Route ${editEntry.routeId}`}
+                {' × '}
+                {ships.find((s) => s.id === editEntry.shipId)?.name ?? `Ship ${editEntry.shipId}`}
+              </Typography>
+            )}
+          </Typography>
+          <IconButton onClick={closeEditModal} size="small" sx={{ ml: 2 }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 1 }}>
+            {/* Slow */}
+            <Card variant="outlined" sx={{ flex: 1, borderColor: '#2D6A4F', borderWidth: 2, borderRadius: '12px' }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Chip label="Slow" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#2D6A4F', color: '#fff', mb: 1.5 }} />
+                <Stack spacing={1.5}>
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editSlowSpeed} onChange={(e) => setEditSlowSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editSlowEmissions} onChange={(e) => setEditSlowEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editSlowDelta} onChange={(e) => setEditSlowDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Standard */}
+            <Card variant="outlined" sx={{ flex: 1, borderColor: '#0984E3', borderWidth: 2, borderRadius: '12px' }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Chip label="Standard" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#0984E3', color: '#fff', mb: 1.5 }} />
+                <Stack spacing={1.5}>
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editStdSpeed} onChange={(e) => setEditStdSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editStdEmissions} onChange={(e) => setEditStdEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editStdDelta} onChange={(e) => setEditStdDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Fast */}
+            <Card variant="outlined" sx={{ flex: 1, borderColor: '#E17055', borderWidth: 2, borderRadius: '12px' }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Chip label="Fast" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#E17055', color: '#fff', mb: 1.5 }} />
+                <Stack spacing={1.5}>
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editFastSpeed} onChange={(e) => setEditFastSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editFastEmissions} onChange={(e) => setEditFastEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editFastDelta} onChange={(e) => setEditFastDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
+
+          {editError && (
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              {editError}
+            </Typography>
+          )}
+
+          <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
+            <Button variant="outlined" onClick={closeEditModal}>Cancel</Button>
+            <Button variant="contained" color="success" onClick={handleEditSave} disabled={editLoading}>
+              {editLoading ? 'Saving…' : 'Save'}
+            </Button>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Stack>
   )
 }

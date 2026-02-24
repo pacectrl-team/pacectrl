@@ -18,6 +18,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { RouteSummary } from '../../types/api'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type RoutesSectionProps = {
   token: string
@@ -51,7 +52,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     setRoutesLoading(true)
     setRoutesError('')
     try {
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -64,8 +65,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
 
       const data = (await response.json()) as RouteSummary[]
       setRoutes(data)
-    } catch {
-      setRoutesError('Unable to load routes. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
     } finally {
       setRoutesLoading(false)
     }
@@ -106,7 +107,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
         is_active: createIsActive,
       }
 
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,8 +128,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateIsActive(true)
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to create route. Please check the details and try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.')
     }
   }
 
@@ -169,7 +170,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     if (Object.keys(body).length === 0) return
 
     try {
-      const response = await fetch(`${ROUTES_URL}${selectedRoute.id}`, {
+      const response = await authFetch(`${ROUTES_URL}${selectedRoute.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -183,8 +184,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       }
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to update route. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.')
     }
   }
 
@@ -192,7 +193,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     if (!token || !selectedRoute) return
 
     try {
-      const response = await fetch(`${ROUTES_URL}${selectedRoute.id}`, {
+      const response = await authFetch(`${ROUTES_URL}${selectedRoute.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -212,8 +213,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditIsActive(true)
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to delete route. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.')
     }
   }
 
