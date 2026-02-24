@@ -141,6 +141,52 @@ export type DashboardOverview = {
   ships: number
 }
 
+export type DashboardVoyageEntry = {
+  voyage_id: number
+  external_trip_id: string
+  status: string
+  route_name: string
+  departure_port: string
+  arrival_port: string
+  ship_name: string
+  departure_datetime: string
+  arrival_datetime: string
+  voted_arrival_datetime: string
+  total_intents: number
+  active_intents: number
+  consumed_intents: number
+  expired_intents: number
+  confirmed_choices_count: number
+  avg_delta_pct: number
+  median_delta_pct: number
+  min_delta_pct: number
+  max_delta_pct: number
+  avg_slider_value: number
+}
+
+export type ConfirmedChoicePerDay = {
+  day: string
+  count: number
+}
+
+export type VoyageStatusBreakdown = {
+  planned: number
+  completed: number
+  cancelled: number
+}
+
+export type DashboardVoyagesResponse = {
+  total_voyages: number
+  total_confirmed_choices: number
+  confirmed_choices_last_30_days: number
+  total_active_intents: number
+  voyage_status_breakdown: VoyageStatusBreakdown
+  avg_delta_pct_all_confirmed: number
+  median_delta_pct_all_confirmed: number
+  confirmed_choices_per_day: ConfirmedChoicePerDay[]
+  voyages: DashboardVoyageEntry[]
+}
+
 export type OperatorSummary = {
   id: number
   name: string
