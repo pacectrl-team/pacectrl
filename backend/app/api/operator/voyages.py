@@ -4,6 +4,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
+from app.models.confirmed_choice import ConfirmedChoice
 from app.models.user import User
 from app.models.voyage import Voyage
 from app.models.widget_config import WidgetConfig
@@ -203,3 +204,30 @@ def update_voyage(
     db.commit()
     db.refresh(db_voyage)
     return db_voyage
+
+
+@router.delete("/{voyage_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+def delete_voyage(
+    voyage_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a voyage. Only allowed when there are no confirmed choices on it."""
+
+    db_voyage = db.query(Voyage).filter(Voyage.id == voyage_id).first()
+    if not db_voyage:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voyage not found")
+
+    if db_voyage.operator_id != current_user.operator_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    # Prevent deletion if confirmed bookings already exist — that data should be kept for auditing.
+    confirmed_count = db.query(ConfirmedChoice).filter(ConfirmedChoice.voyage_id == voyage_id).count()
+    if confirmed_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot delete voyage with {confirmed_count} confirmed choice(s). Cancel it instead.",
+        )
+
+    db.delete(db_voyage)
+    db.commit()
