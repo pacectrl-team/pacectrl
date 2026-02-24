@@ -26,7 +26,6 @@ import type {
   SpeedAnchorsEstimate,
   RouteSummary,
   ShipSummary,
-  SpeedEstimateAnchorsResponse,
 } from '../../types/api'
 
 type SpeedEstimatesSectionProps = {
@@ -197,20 +196,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const resetMessages = () => {
     setError('')
     setSuccess('')
-  }
-
-  const applyDataToForm = (data: SpeedAnchorsEstimate) => {
-    setSlowSpeedKnots(String(data.slow.speed_knots))
-    setSlowEmissions(String(data.slow.expected_emissions_kg_co2))
-    setSlowArrivalDelta(String(data.slow.expected_arrival_delta_minutes))
-
-    setStandardSpeedKnots(String(data.standard.speed_knots))
-    setStandardEmissions(String(data.standard.expected_emissions_kg_co2))
-    setStandardArrivalDelta(String(data.standard.expected_arrival_delta_minutes))
-
-    setFastSpeedKnots(String(data.fast.speed_knots))
-    setFastEmissions(String(data.fast.expected_emissions_kg_co2))
-    setFastArrivalDelta(String(data.fast.expected_arrival_delta_minutes))
   }
 
   useEffect(() => {
