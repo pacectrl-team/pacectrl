@@ -225,77 +225,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     }
   }, [token, initialShipId])
 
-  const loadFromApi = async (routeIdNum: number, shipIdNum: number) => {
-    setLoading(true)
-    try {
-      const response = await authFetch(
-        `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${routeIdNum}/ships/${shipIdNum}/anchors`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to load speed estimates')
-      }
-
-      const json = (await response.json()) as SpeedEstimateAnchorsResponse
-
-      const slow = json.anchors.slow || json.anchors['slow']
-      const standard = json.anchors.standard || json.anchors['standard']
-      const fast = json.anchors.fast || json.anchors['fast']
-
-      if (!slow || !standard || !fast) {
-        throw new Error('Incomplete anchors returned from API')
-      }
-
-      const data: SpeedAnchorsEstimate = {
-        slow: {
-          speed_knots: slow.speed_knots,
-          expected_emissions_kg_co2: slow.expected_emissions_kg_co2,
-          expected_arrival_delta_minutes:
-            slow.expected_arrival_delta_minutes,
-        },
-        standard: {
-          speed_knots: standard.speed_knots,
-          expected_emissions_kg_co2: standard.expected_emissions_kg_co2,
-          expected_arrival_delta_minutes:
-            standard.expected_arrival_delta_minutes,
-        },
-        fast: {
-          speed_knots: fast.speed_knots,
-          expected_emissions_kg_co2: fast.expected_emissions_kg_co2,
-          expected_arrival_delta_minutes:
-            fast.expected_arrival_delta_minutes,
-        },
-      }
-
-      applyDataToForm(data)
-
-      setEntries((prev) => {
-        const existingIndex = prev.findIndex(
-          (entry) => entry.routeId === routeIdNum && entry.shipId === shipIdNum,
-        )
-        const newEntry: SpeedEstimateEntry = { routeId: routeIdNum, shipId: shipIdNum, data }
-        if (existingIndex === -1) {
-          return [...prev, newEntry]
-        }
-        const next = [...prev]
-        next[existingIndex] = newEntry
-        return next
-      })
-
-      setSuccess('Loaded speed estimates.')
-    } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSave = async () => {
     if (!token) return
     resetMessages()
@@ -383,15 +312,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleSelectEntry = (entry: SpeedEstimateEntry) => {
-    setRouteId(String(entry.routeId))
-    setShipId(String(entry.shipId))
-    resetMessages()
-    // Use existing data for a snappy UX; user can then Save which
-    // persists through the anchors API for this route+ship.
-    applyDataToForm(entry.data)
   }
 
   // ── Modal helpers ──
