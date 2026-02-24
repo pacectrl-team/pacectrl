@@ -56,10 +56,10 @@ type NavItem = {
 
 const mainNav: NavItem[] = [
   { key: 'overview', label: 'Dashboard', icon: <DashboardIcon /> },
-  { key: 'voyages', label: 'Voyages', icon: <SailingIcon /> },
   { key: 'ships', label: 'Ships', icon: <DirectionsBoatIcon /> },
   { key: 'routes', label: 'Routes', icon: <RouteIcon /> },
   { key: 'speed-estimates', label: 'Speed Estimates', icon: <SpeedIcon /> },
+  { key: 'voyages', label: 'Voyages', icon: <SailingIcon /> },
   { key: 'widgets', label: 'Widgets', icon: <WidgetsIcon /> },
 ]
 
