@@ -61,6 +61,12 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
             if query_voyage_id and query_voyage_id.isdigit():
                 voyage_id = int(query_voyage_id)
 
+        # Don't store a voyage_id FK on DELETE requests — the voyage may no longer
+        # exist by the time we try to insert the log row, causing a FK violation.
+        # The path column already records which voyage was targeted.
+        if request.method == "DELETE":
+            voyage_id = None
+
         # Call the next middleware/route handler
         response: Response = await call_next(request)
 
