@@ -296,20 +296,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     }
   }
 
-  const handleLoad = async () => {
-    if (!token) return
-    resetMessages()
-
-    const routeIdNum = Number(routeId)
-    const shipIdNum = Number(shipId)
-
-    if (!routeIdNum || !shipIdNum) {
-      setError('Route ID and Ship ID are required and must be numbers.')
-      return
-    }
-    await loadFromApi(routeIdNum, shipIdNum)
-  }
-
   const handleSave = async () => {
     if (!token) return
     resetMessages()
@@ -713,20 +699,12 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button
-            variant="outlined"
-            color="success"
-            onClick={handleLoad}
-            disabled={loading}
-          >
-            Load
-          </Button>
-          <Button
             variant="contained"
             color="success"
             onClick={handleSave}
             disabled={loading}
           >
-            Save
+            Create
           </Button>
         </Stack>
 
