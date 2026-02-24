@@ -13,6 +13,7 @@ import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded
 import TagRoundedIcon from '@mui/icons-material/TagRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { ShipSummary } from '../../types/api'
+import { authFetch } from '../../utils/authFetch'
 
 type ShipsSectionProps = {
   token: string
@@ -38,7 +39,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
     setShipsLoading(true)
     setShipsError('')
     try {
-      const response = await fetch(SHIPS_URL, {
+      const response = await authFetch(SHIPS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -76,7 +77,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
         imo_number: createImoNumber,
       }
 
-      const response = await fetch(SHIPS_URL, {
+      const response = await authFetch(SHIPS_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +119,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
     if (Object.keys(body).length === 0) return
 
     try {
-      const response = await fetch(`${SHIPS_URL}${selectedShip.id}`, {
+      const response = await authFetch(`${SHIPS_URL}${selectedShip.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
     if (!token || !selectedShip) return
 
     try {
-      const response = await fetch(`${SHIPS_URL}${selectedShip.id}`, {
+      const response = await authFetch(`${SHIPS_URL}${selectedShip.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

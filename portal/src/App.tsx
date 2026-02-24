@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { AppBar, Box, Button, Stack, Toolbar, Typography } from '@mui/material'
 import './App.css'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import { onUnauthorized } from './utils/authFetch'
 
 type View = 'home' | 'login' | 'dashboard'
 
@@ -50,13 +51,18 @@ function App() {
     setView('dashboard')
   }
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setToken(null)
     setOperatorId(null)
     window.localStorage.removeItem('pacectrl_token')
     window.localStorage.removeItem('pacectrl_operator_id')
     setView('home')
-  }
+  }, [])
+
+  // Auto-logout when any API call returns 401 (expired / invalid token)
+  useEffect(() => {
+    return onUnauthorized(handleLogout)
+  }, [handleLogout])
 
   const handleLogoClick = () => {
     setView('home')

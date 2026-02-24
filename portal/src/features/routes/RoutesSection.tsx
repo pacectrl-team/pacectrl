@@ -18,6 +18,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { RouteSummary } from '../../types/api'
+import { authFetch } from '../../utils/authFetch'
 
 type RoutesSectionProps = {
   token: string
@@ -51,7 +52,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     setRoutesLoading(true)
     setRoutesError('')
     try {
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -106,7 +107,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
         is_active: createIsActive,
       }
 
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +170,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     if (Object.keys(body).length === 0) return
 
     try {
-      const response = await fetch(`${ROUTES_URL}${selectedRoute.id}`, {
+      const response = await authFetch(`${ROUTES_URL}${selectedRoute.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +193,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
     if (!token || !selectedRoute) return
 
     try {
-      const response = await fetch(`${ROUTES_URL}${selectedRoute.id}`, {
+      const response = await authFetch(`${ROUTES_URL}${selectedRoute.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

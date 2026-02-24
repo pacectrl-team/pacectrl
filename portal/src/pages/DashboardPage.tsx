@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Box, Button, Stack, Typography } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/DashboardRounded'
 import PeopleIcon from '@mui/icons-material/PeopleRounded'
@@ -17,6 +17,9 @@ import RoutesSection from '../features/routes/RoutesSection'
 import SpeedEstimatesSection from '../features/speedEstimates/SpeedEstimatesSection'
 import WidgetsSection from '../features/widgets/WidgetsSection'
 import OperatorSection from '../features/operators/OperatorSection'
+import { authFetch } from '../utils/authFetch'
+
+const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
 
 export type DashboardSection =
   | 'overview'
@@ -68,6 +71,32 @@ const mgmtNav: NavItem[] = [
 function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
   const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
 
+  // Lightweight token check — fires on every section switch.
+  // Reads from localStorage so we also catch manual token changes (testing).
+  const verifyToken = useCallback(async () => {
+    const storedToken = window.localStorage.getItem('pacectrl_token')
+    if (!storedToken || storedToken !== token) {
+      onLogout()
+      return
+    }
+    try {
+      await authFetch(ME_URL, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${storedToken}` },
+      })
+    } catch {
+      // network error — ignore, authFetch already dispatches on 401
+    }
+  }, [token, onLogout])
+
+  const handleSectionChange = useCallback(
+    async (section: DashboardSection) => {
+      await verifyToken()
+      setActiveSection(section)
+    },
+    [verifyToken],
+  )
+
   useEffect(() => {
     const title = sectionTitles[activeSection]
     document.title = `PaceCtrl Portal · ${title}`
@@ -77,7 +106,7 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
     <button
       key={item.key}
       className={`sidebar-link ${activeSection === item.key ? 'active' : ''}`}
-      onClick={() => setActiveSection(item.key)}
+      onClick={() => handleSectionChange(item.key)}
     >
       <span className="link-icon">{item.icon}</span>
       <span>{item.label}</span>
@@ -132,7 +161,7 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
         <Box className="dashboard-content">
           <Stack spacing={3}>
             {activeSection === 'overview' && (
-              <OverviewSection token={token} onNavigate={setActiveSection} />
+              <OverviewSection token={token} onNavigate={handleSectionChange} />
             )}
 
             {activeSection === 'users' && (

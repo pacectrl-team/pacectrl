@@ -29,6 +29,7 @@ import RefreshIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityIcon from '@mui/icons-material/VisibilityRounded'
 import AddIcon from '@mui/icons-material/AddRounded'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
+import { authFetch } from '../../utils/authFetch'
 
 type WidgetsSectionProps = {
   token: string
@@ -404,7 +405,7 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(WIDGET_CONFIGS_URL, {
+      const response = await authFetch(WIDGET_CONFIGS_URL, {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -505,7 +506,7 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
     if (!token) return
     setError('')
     try {
-      const response = await fetch(WIDGET_CONFIGS_URL, {
+      const response = await authFetch(WIDGET_CONFIGS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(buildBody()),
@@ -524,7 +525,7 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
     if (!token || typeof selectedId !== 'number') return
     setError('')
     try {
-      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
+      const response = await authFetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(buildBody()),
@@ -540,7 +541,7 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
     if (!token || typeof selectedId !== 'number') return
     setError('')
     try {
-      const response = await fetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
+      const response = await authFetch(`${WIDGET_CONFIGS_URL}${selectedId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })

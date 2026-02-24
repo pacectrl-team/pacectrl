@@ -18,6 +18,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
+import { authFetch } from '../../utils/authFetch'
 
 type VoyagesSectionProps = {
   token: string
@@ -61,7 +62,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     setVoyagesLoading(true)
     setVoyagesError('')
     try {
-      const response = await fetch(VOYAGES_URL, {
+      const response = await authFetch(VOYAGES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -85,7 +86,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     if (!token) return
 
     try {
-      const response = await fetch(SHIPS_URL, {
+      const response = await authFetch(SHIPS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -107,7 +108,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     if (!token) return
 
     try {
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -129,7 +130,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     if (!token) return
 
     try {
-      const response = await fetch(WIDGET_CONFIGS_URL, {
+      const response = await authFetch(WIDGET_CONFIGS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -192,7 +193,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
         body.ship_id = Number(createVoyageShipId)
       }
 
-      const response = await fetch(VOYAGES_URL, {
+      const response = await authFetch(VOYAGES_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +278,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     if (Object.keys(body).length === 0) return
 
     try {
-      const response = await fetch(`${VOYAGES_URL}${selectedVoyage.id}`, {
+      const response = await authFetch(`${VOYAGES_URL}${selectedVoyage.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

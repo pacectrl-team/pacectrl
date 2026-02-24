@@ -15,6 +15,7 @@ import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { UserSummary } from '../../types/api'
+import { authFetch } from '../../utils/authFetch'
 
 type UsersSectionProps = {
   token: string
@@ -41,7 +42,7 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
     setUsersLoading(true)
     setUsersError('')
     try {
-      const response = await fetch(USERS_URL, {
+      const response = await authFetch(USERS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -89,7 +90,7 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
         body.operator_id = operatorId
       }
 
-      const response = await fetch(USERS_URL, {
+      const response = await authFetch(USERS_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
     if (Object.keys(body).length === 0) return
 
     try {
-      const response = await fetch(`${USERS_URL}${selectedUser.id}`, {
+      const response = await authFetch(`${USERS_URL}${selectedUser.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
     if (!token || !selectedUser) return
 
     try {
-      const response = await fetch(`${USERS_URL}${selectedUser.id}`, {
+      const response = await authFetch(`${USERS_URL}${selectedUser.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

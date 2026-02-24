@@ -19,6 +19,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
+import { authFetch } from '../../utils/authFetch'
 import type {
   AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
@@ -88,7 +89,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     if (!token) return
 
     try {
-      const response = await fetch(ROUTES_URL, {
+      const response = await authFetch(ROUTES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,7 +111,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     if (!token) return
 
     try {
-      const response = await fetch(SHIPS_URL, {
+      const response = await authFetch(SHIPS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -132,7 +133,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     if (!token) return
 
     try {
-      const response = await fetch(SPEED_ESTIMATES_URL, {
+      const response = await authFetch(SPEED_ESTIMATES_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -227,7 +228,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const loadFromApi = async (routeIdNum: number, shipIdNum: number) => {
     setLoading(true)
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${routeIdNum}/ships/${shipIdNum}/anchors`,
         {
           method: 'GET',
@@ -358,7 +359,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
     setLoading(true)
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${routeIdNum}/ships/${shipIdNum}/anchors`,
         {
           method: 'PUT',
@@ -464,7 +465,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     setEditLoading(true)
     setEditError('')
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/routes/${editEntry.routeId}/ships/${editEntry.shipId}/anchors`,
         {
           method: 'PUT',
