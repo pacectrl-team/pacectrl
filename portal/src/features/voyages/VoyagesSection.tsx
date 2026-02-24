@@ -5,8 +5,14 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   MenuItem,
 } from '@mui/material'
@@ -17,6 +23,8 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
@@ -46,6 +54,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [createVoyageArrivalDate, setCreateVoyageArrivalDate] = useState('')
   const [createVoyageStatus, setCreateVoyageStatus] = useState('planned')
   const [selectedVoyage, setSelectedVoyage] = useState<VoyageSummary | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [editVoyageExternalTripId, setEditVoyageExternalTripId] = useState('')
   const [editVoyageWidgetConfigId, setEditVoyageWidgetConfigId] = useState('')
   const [editVoyageRouteId, setEditVoyageRouteId] = useState('')
@@ -229,6 +239,38 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     setEditVoyageDepartureDate(voyage.departure_date)
     setEditVoyageArrivalDate(voyage.arrival_date)
     setEditVoyageStatus(voyage.status)
+    setDialogOpen(true)
+  }
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false)
+    setSelectedVoyage(null)
+  }
+
+  const handleDeleteVoyage = async () => {
+    if (!token || !selectedVoyage) return
+
+    setDeleteLoading(true)
+    try {
+      const response = await authFetch(`${VOYAGES_URL}${selectedVoyage.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete voyage')
+      }
+
+      setDialogOpen(false)
+      setSelectedVoyage(null)
+      await fetchVoyages()
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to delete voyage. Please try again.')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const handleUpdateVoyage = async () => {
@@ -291,6 +333,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
         throw new Error('Failed to update voyage')
       }
 
+      setDialogOpen(false)
+      setSelectedVoyage(null)
       await fetchVoyages()
     } catch (err) {
       setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.')
@@ -579,183 +623,238 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
         )}
       </Box>
 
-      {/* ── Edit Voyage ── */}
-      {selectedVoyage && (
-        <Box className="section-card">
-          <Box className="section-header">
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
-                <h2>Edit Voyage</h2>
+      {/* ── Edit / Delete Voyage Dialog ── */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        {selectedVoyage && (
+          <>
+            <DialogTitle sx={{ pb: 0 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Edit Voyage
+                  </Typography>
+                </Stack>
+                <IconButton onClick={handleCloseDialog} size="small">
+                  <CloseRoundedIcon />
+                </IconButton>
               </Stack>
-              <Typography variant="body2" className="subtitle">
-                Editing <strong>{selectedVoyage.external_trip_id}</strong>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Editing <strong>{selectedVoyage.external_trip_id}</strong> (#{selectedVoyage.id})
               </Typography>
-            </Box>
-          </Box>
+            </DialogTitle>
 
-          <Stack spacing={2}>
-            {/* Trip identity */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <DirectionsBoatRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    Trip Identity
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="External trip ID"
-                    variant="outlined"
-                    size="small"
-                    value={editVoyageExternalTripId}
-                    onChange={(event) => setEditVoyageExternalTripId(event.target.value)}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Status"
-                    variant="outlined"
-                    size="small"
-                    select
-                    value={editVoyageStatus}
-                    onChange={(event) => setEditVoyageStatus(event.target.value)}
-                    fullWidth
-                  >
-                    <MenuItem value="planned">Planned</MenuItem>
-                    <MenuItem value="completed">Completed</MenuItem>
-                  </TextField>
-                </Stack>
-              </CardContent>
-            </Card>
+            <DialogContent sx={{ pt: 2 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {/* Trip identity */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <DirectionsBoatRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        Trip Identity
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="External trip ID"
+                        variant="outlined"
+                        size="small"
+                        value={editVoyageExternalTripId}
+                        onChange={(event) => setEditVoyageExternalTripId(event.target.value)}
+                        fullWidth
+                      />
+                      <TextField
+                        label="Status"
+                        variant="outlined"
+                        size="small"
+                        select
+                        value={editVoyageStatus}
+                        onChange={(event) => setEditVoyageStatus(event.target.value)}
+                        fullWidth
+                      >
+                        <MenuItem value="planned">Planned</MenuItem>
+                        <MenuItem value="completed">Completed</MenuItem>
+                      </TextField>
+                    </Stack>
+                  </CardContent>
+                </Card>
 
-            {/* Ship & Route */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <RouteRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
-                    Ship &amp; Route
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Ship"
-                    variant="outlined"
-                    size="small"
-                    select
-                    value={editVoyageShipId}
-                    onChange={(event) => setEditVoyageShipId(event.target.value)}
-                    fullWidth
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {ships.map((ship) => (
-                      <MenuItem key={ship.id} value={String(ship.id)}>
-                        {ship.name} (ID: {ship.id})
+                {/* Ship & Route */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <RouteRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
+                        Ship &amp; Route
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="Ship"
+                        variant="outlined"
+                        size="small"
+                        select
+                        value={editVoyageShipId}
+                        onChange={(event) => setEditVoyageShipId(event.target.value)}
+                        fullWidth
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        {ships.map((ship) => (
+                          <MenuItem key={ship.id} value={String(ship.id)}>
+                            {ship.name} (ID: {ship.id})
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        label="Route"
+                        variant="outlined"
+                        size="small"
+                        select
+                        value={editVoyageRouteId}
+                        onChange={(event) => setEditVoyageRouteId(event.target.value)}
+                        fullWidth
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        {routes.map((route) => (
+                          <MenuItem key={route.id} value={String(route.id)}>
+                            {route.name} (ID: {route.id})
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Schedule */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <CalendarMonthRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                        Schedule
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="Departure date"
+                        variant="outlined"
+                        size="small"
+                        type="date"
+                        value={editVoyageDepartureDate}
+                        onChange={(event) => setEditVoyageDepartureDate(event.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ min: today }}
+                      />
+                      <TextField
+                        label="Arrival date"
+                        variant="outlined"
+                        size="small"
+                        type="date"
+                        value={editVoyageArrivalDate}
+                        onChange={(event) => setEditVoyageArrivalDate(event.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ min: today }}
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Widget config */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f1f8f1' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <SettingsRoundedIcon sx={{ color: '#388e3c', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#388e3c' }}>
+                        Widget Config
+                      </Typography>
+                    </Stack>
+                    <TextField
+                      label="Widget config"
+                      variant="outlined"
+                      size="small"
+                      select
+                      value={editVoyageWidgetConfigId}
+                      onChange={(event) => setEditVoyageWidgetConfigId(event.target.value)}
+                      fullWidth
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
                       </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="Route"
+                      {widgetConfigs.map((config) => (
+                        <MenuItem key={config.id} value={String(config.id)}>
+                          {config.name} (ID: {config.id})
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, justifyContent: 'space-between' }}>
+              {/* Delete button — blurred / disabled when voyage has intents */}
+              <Tooltip
+                title={
+                  selectedVoyage.intent_count > 0
+                    ? `Cannot delete: ${selectedVoyage.intent_count} intent${selectedVoyage.intent_count !== 1 ? 's' : ''} linked`
+                    : 'Delete this voyage'
+                }
+                arrow
+              >
+                <span>
+                  <Button
                     variant="outlined"
-                    size="small"
-                    select
-                    value={editVoyageRouteId}
-                    onChange={(event) => setEditVoyageRouteId(event.target.value)}
-                    fullWidth
+                    color="error"
+                    startIcon={<DeleteRoundedIcon />}
+                    disabled={selectedVoyage.intent_count > 0 || deleteLoading}
+                    onClick={handleDeleteVoyage}
+                    sx={{
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      ...(selectedVoyage.intent_count > 0 && {
+                        filter: 'blur(1px)',
+                        opacity: 0.5,
+                      }),
+                    }}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {routes.map((route) => (
-                      <MenuItem key={route.id} value={String(route.id)}>
-                        {route.name} (ID: {route.id})
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-              </CardContent>
-            </Card>
+                    {deleteLoading ? 'Deleting…' : 'Delete'}
+                  </Button>
+                </span>
+              </Tooltip>
 
-            {/* Schedule */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <CalendarMonthRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
-                    Schedule
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Departure date"
-                    variant="outlined"
-                    size="small"
-                    type="date"
-                    value={editVoyageDepartureDate}
-                    onChange={(event) => setEditVoyageDepartureDate(event.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ min: today }}
-                  />
-                  <TextField
-                    label="Arrival date"
-                    variant="outlined"
-                    size="small"
-                    type="date"
-                    value={editVoyageArrivalDate}
-                    onChange={(event) => setEditVoyageArrivalDate(event.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ min: today }}
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
-
-            {/* Widget config */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f1f8f1' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <SettingsRoundedIcon sx={{ color: '#388e3c', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#388e3c' }}>
-                    Widget Config
-                  </Typography>
-                </Stack>
-                <TextField
-                  label="Widget config"
-                  variant="outlined"
-                  size="small"
-                  select
-                  value={editVoyageWidgetConfigId}
-                  onChange={(event) => setEditVoyageWidgetConfigId(event.target.value)}
-                  fullWidth
+              <Stack direction="row" spacing={1}>
+                <Button
+                  onClick={handleCloseDialog}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
                 >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {widgetConfigs.map((config) => (
-                    <MenuItem key={config.id} value={String(config.id)}>
-                      {config.name} (ID: {config.id})
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </CardContent>
-            </Card>
-
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleUpdateVoyage}
-              sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
-            >
-              Save changes
-            </Button>
-          </Stack>
-        </Box>
-      )}
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleUpdateVoyage}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Save changes
+                </Button>
+              </Stack>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Stack>
   )
 }
