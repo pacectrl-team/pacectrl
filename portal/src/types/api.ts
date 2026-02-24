@@ -146,3 +146,21 @@ export type OperatorSummary = {
   name: string
   created_at: string
 }
+
+export type AuditLogEntry = {
+  request_id: string
+  created_at: string
+  method: string
+  path: string
+  status_code: number
+  response_ms: number
+  user_id: number | null
+  voyage_id: number | null
+}
+
+export type AuditLogsResponse = {
+  total: number
+  limit: number
+  offset: number
+  items: AuditLogEntry[]
+}

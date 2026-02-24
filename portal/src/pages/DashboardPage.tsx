@@ -8,6 +8,7 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoatRounded'
 import RouteIcon from '@mui/icons-material/RouteRounded'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import WidgetsIcon from '@mui/icons-material/WidgetsRounded'
+import ListAltIcon from '@mui/icons-material/ListAltRounded'
 
 import UsersSection from '../features/users/UsersSection'
 import VoyagesSection from '../features/voyages/VoyagesSection'
@@ -17,6 +18,7 @@ import RoutesSection from '../features/routes/RoutesSection'
 import SpeedEstimatesSection from '../features/speedEstimates/SpeedEstimatesSection'
 import WidgetsSection from '../features/widgets/WidgetsSection'
 import OperatorSection from '../features/operators/OperatorSection'
+import ApiLogsSection from '../features/apiLogs/ApiLogsSection'
 import { authFetch } from '../utils/authFetch'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
@@ -30,6 +32,7 @@ export type DashboardSection =
   | 'routes'
   | 'speed-estimates'
   | 'widgets'
+  | 'api-logs'
 
 export type DashboardPageProps = {
   token: string
@@ -46,6 +49,7 @@ const sectionTitles: Record<DashboardSection, string> = {
   routes: 'Routes',
   'speed-estimates': 'Speed Estimates',
   widgets: 'Widgets',
+  'api-logs': 'API Logs',
 }
 
 type NavItem = {
@@ -66,6 +70,7 @@ const mainNav: NavItem[] = [
 const mgmtNav: NavItem[] = [
   { key: 'users', label: 'Users', icon: <PeopleIcon /> },
   { key: 'operators', label: 'Operator', icon: <BusinessIcon /> },
+  { key: 'api-logs', label: 'API Logs', icon: <ListAltIcon /> },
 ]
 
 function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
@@ -186,6 +191,10 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
 
             {activeSection === 'widgets' && (
               <WidgetsSection token={token} operatorId={operatorId} />
+            )}
+
+            {activeSection === 'api-logs' && (
+              <ApiLogsSection token={token} />
             )}
           </Stack>
 
