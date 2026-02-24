@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from typing import Any, Dict
 
 import bcrypt
@@ -16,6 +17,23 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, password_hash: str) -> bool:
     """Verify a plain-text password against the stored hash."""
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
+
+def hash_webhook_secret(secret: str) -> str:
+    """
+    Hash a webhook secret for safe storage in the database.
+
+    We use SHA-256 rather than bcrypt because the secret is a high-entropy
+    random token (32 bytes from secrets.token_urlsafe), so brute-force is
+    infeasible and bcrypt's extra slowness would only add latency to every
+    incoming webhook request.
+    """
+    return sha256(secret.encode("utf-8")).hexdigest()
+
+
+def verify_webhook_secret(plain: str, stored_hash: str) -> bool:
+    """Verify an incoming webhook secret against the stored SHA-256 hash."""
+    return sha256(plain.encode("utf-8")).hexdigest() == stored_hash
 
 
 def create_access_token(
