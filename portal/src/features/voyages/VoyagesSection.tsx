@@ -18,7 +18,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type VoyagesSectionProps = {
   token: string
@@ -75,8 +75,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
       const data = (await response.json()) as VoyageSummary[]
       setVoyages(data)
-    } catch {
-      setVoyagesError('Unable to load voyages. Please try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load voyages. Please try again.')
     } finally {
       setVoyagesLoading(false)
     }
@@ -99,8 +99,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
       const data = (await response.json()) as ShipSummary[]
       setShips(data)
-    } catch {
-      setVoyagesError('Unable to load ships. Please try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
     }
   }
 
@@ -121,8 +121,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
       const data = (await response.json()) as RouteSummary[]
       setRoutes(data)
-    } catch {
-      setVoyagesError('Unable to load routes. Please try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
     }
   }
 
@@ -143,8 +143,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
       const data = (await response.json()) as WidgetConfig[]
       setWidgetConfigs(data)
-    } catch {
-      setVoyagesError('Unable to load widget configs. Please try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load widget configs. Please try again.')
     }
   }
 
@@ -215,8 +215,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setCreateVoyageStatus('planned')
 
       await fetchVoyages()
-    } catch {
-      setVoyagesError('Unable to create voyage. Please check the details and try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please check the details and try again.')
     }
   }
 
@@ -292,8 +292,8 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       }
 
       await fetchVoyages()
-    } catch {
-      setVoyagesError('Unable to update voyage. Please try again.')
+    } catch (err) {
+      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.')
     }
   }
 

@@ -8,7 +8,7 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoatRounded'
 import TrendingUpIcon from '@mui/icons-material/TrendingUpRounded'
 import type { AuthMeResponse, DashboardOverview, ShipSummary, VoyageSummary, RouteSummary } from '../../types/api'
 import type { DashboardSection } from '../../pages/DashboardPage'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
 const OVERVIEW_URL =
@@ -124,8 +124,8 @@ function OverviewSection({ token, onNavigate }: OverviewSectionProps) {
         if (shipsRes.ok) setShips((await shipsRes.json()) as ShipSummary[])
         if (voyagesRes.ok) setVoyages((await voyagesRes.json()) as VoyageSummary[])
         if (routesRes.ok) setRoutes((await routesRes.json()) as RouteSummary[])
-      } catch {
-        setError('Unable to load overview information.')
+      } catch (err) {
+        setError(err instanceof ForbiddenError ? err.message : 'Unable to load overview information.')
       } finally {
         setLoading(false)
       }

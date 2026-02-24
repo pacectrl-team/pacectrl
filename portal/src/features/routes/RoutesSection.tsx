@@ -18,7 +18,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { RouteSummary } from '../../types/api'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type RoutesSectionProps = {
   token: string
@@ -65,8 +65,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
 
       const data = (await response.json()) as RouteSummary[]
       setRoutes(data)
-    } catch {
-      setRoutesError('Unable to load routes. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
     } finally {
       setRoutesLoading(false)
     }
@@ -128,8 +128,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateIsActive(true)
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to create route. Please check the details and try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.')
     }
   }
 
@@ -184,8 +184,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       }
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to update route. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.')
     }
   }
 
@@ -213,8 +213,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditIsActive(true)
 
       await fetchRoutes()
-    } catch {
-      setRoutesError('Unable to delete route. Please try again.')
+    } catch (err) {
+      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.')
     }
   }
 

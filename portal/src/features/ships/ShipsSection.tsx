@@ -13,7 +13,7 @@ import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded
 import TagRoundedIcon from '@mui/icons-material/TagRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { ShipSummary } from '../../types/api'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type ShipsSectionProps = {
   token: string
@@ -52,8 +52,8 @@ function ShipsSection({ token }: ShipsSectionProps) {
 
       const data = (await response.json()) as ShipSummary[]
       setShips(data)
-    } catch {
-      setShipsError('Unable to load ships. Please try again.')
+    } catch (err) {
+      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
     } finally {
       setShipsLoading(false)
     }
@@ -93,8 +93,8 @@ function ShipsSection({ token }: ShipsSectionProps) {
       setCreateName('')
       setCreateImoNumber('')
       await fetchShips()
-    } catch {
-      setShipsError('Unable to create ship. Please check the details and try again.')
+    } catch (err) {
+      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to create ship. Please check the details and try again.')
     }
   }
 
@@ -133,8 +133,8 @@ function ShipsSection({ token }: ShipsSectionProps) {
       }
 
       await fetchShips()
-    } catch {
-      setShipsError('Unable to update ship. Please try again.')
+    } catch (err) {
+      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to update ship. Please try again.')
     }
   }
 
@@ -157,8 +157,8 @@ function ShipsSection({ token }: ShipsSectionProps) {
       setEditName('')
       setEditImoNumber('')
       await fetchShips()
-    } catch {
-      setShipsError('Unable to delete ship. Please try again.')
+    } catch (err) {
+      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to delete ship. Please try again.')
     }
   }
 

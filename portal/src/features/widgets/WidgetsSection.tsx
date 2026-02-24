@@ -29,7 +29,7 @@ import RefreshIcon from '@mui/icons-material/RefreshRounded'
 import VisibilityIcon from '@mui/icons-material/VisibilityRounded'
 import AddIcon from '@mui/icons-material/AddRounded'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type WidgetsSectionProps = {
   token: string
@@ -412,8 +412,8 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       if (!response.ok) throw new Error('Failed to load widget configs')
       const data = (await response.json()) as WidgetConfig[]
       setConfigs(data)
-    } catch {
-      setError('Unable to load widget configs.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load widget configs.')
     } finally {
       setLoading(false)
     }
@@ -516,8 +516,8 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       await fetchConfigs()
       setSelectedId(created.id)
       populateFromConfig(created)
-    } catch {
-      setError('Unable to create widget config.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to create widget config.')
     }
   }
 
@@ -532,8 +532,8 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       })
       if (!response.ok) throw new Error('Update failed')
       await fetchConfigs()
-    } catch {
-      setError('Unable to update widget config.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to update widget config.')
     }
   }
 
@@ -549,8 +549,8 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       setSelectedId('')
       resetToDefaults()
       await fetchConfigs()
-    } catch {
-      setError('Unable to delete widget config.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to delete widget config.')
     }
   }
 

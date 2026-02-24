@@ -15,7 +15,7 @@ import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { UserSummary } from '../../types/api'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 
 type UsersSectionProps = {
   token: string
@@ -55,8 +55,8 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
 
       const data = (await response.json()) as UserSummary[]
       setUsers(data)
-    } catch {
-      setUsersError('Unable to load users. Please try again.')
+    } catch (err) {
+      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to load users. Please try again.')
     } finally {
       setUsersLoading(false)
     }
@@ -107,8 +107,8 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       setCreatePassword('')
       setCreateRole('')
       await fetchUsers()
-    } catch {
-      setUsersError('Unable to create user. Please check the details and try again.')
+    } catch (err) {
+      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to create user. Please check the details and try again.')
     }
   }
 
@@ -144,8 +144,8 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       }
 
       await fetchUsers()
-    } catch {
-      setUsersError('Unable to update user. Please try again.')
+    } catch (err) {
+      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to update user. Please try again.')
     }
   }
 
@@ -169,8 +169,8 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       setEditRole('')
       setEditPassword('')
       await fetchUsers()
-    } catch {
-      setUsersError('Unable to delete user. Please try again.')
+    } catch (err) {
+      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to delete user. Please try again.')
     }
   }
 

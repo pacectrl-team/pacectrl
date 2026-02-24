@@ -19,7 +19,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
-import { authFetch } from '../../utils/authFetch'
+import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import type {
   AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
@@ -102,8 +102,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       const data = (await response.json()) as RouteSummary[]
       setRoutes(data)
-    } catch {
-      setError('Unable to load routes. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
     }
   }
 
@@ -124,8 +124,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       const data = (await response.json()) as ShipSummary[]
       setShips(data)
-    } catch {
-      setError('Unable to load ships. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
     }
   }
 
@@ -189,8 +189,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         .filter((entry): entry is SpeedEstimateEntry => entry !== null)
 
       setEntries(nextEntries)
-    } catch {
-      setError('Unable to load speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
     }
   }
 
@@ -289,8 +289,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       })
 
       setSuccess('Loaded speed estimates.')
-    } catch {
-      setError('Unable to load speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -378,8 +378,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       })
 
       setSuccess('Speed estimates saved successfully.')
-    } catch {
-      setError('Unable to save speed estimates. Please try again.')
+    } catch (err) {
+      setError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -478,8 +478,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       closeEditModal()
       setSuccess('Speed estimates updated successfully.')
-    } catch {
-      setEditError('Unable to save speed estimates. Please try again.')
+    } catch (err) {
+      setEditError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
     } finally {
       setEditLoading(false)
     }
