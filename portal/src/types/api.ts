@@ -17,6 +17,7 @@ export type VoyageSummary = {
   arrival_date: string
   status: string
   created_at: string
+  intent_count: number
 }
 
 export type AuthMeResponse = {
