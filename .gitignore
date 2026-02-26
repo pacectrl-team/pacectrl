@@ -15,6 +15,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!nordline-demo/frontend/lib/
 lib64/
 parts/
 sdist/
