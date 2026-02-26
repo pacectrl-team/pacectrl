@@ -51,7 +51,7 @@ export default function RootLayout({
             © 2026 NordLine Ferries AB — This is a{" "}
             <strong className="text-white">demo site</strong> for the{" "}
             <a
-              href={process.env.NEXT_PUBLIC_PACECTRL_URL || "https://pacectrl-production.up.railway.app"}
+              href="https://pacectrl.up.railway.app/"
               className="underline hover:text-white"
               target="_blank"
               rel="noopener noreferrer"
