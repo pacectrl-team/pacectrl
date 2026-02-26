@@ -2,15 +2,15 @@
  * NordLine ferry trip catalogue.
  *
  * Each trip has:
- *  - A stable externalTripId that matches the value registered in PaceCtrl
+ *  - A stable externalTripId that matches the value registered in NordLine
  *    (format: {FROM}-{TO}-{YYYY-MM-DD})
  *  - Realistic ferry route details (departure, arrival, ship, price)
  *
- * The publicKey "123" is the operator public key registered in the PaceCtrl
+ * The publicKey "ffDHklbQMH1PnryFLzGoyCi-5MPS37ILdFYNgltpmYY" is the operator public key registered in the NordLine
  * demo environment. Update it here if it ever changes.
  */
 
-export const PACECTRL_PUBLIC_KEY = "123";
+export const PACECTRL_PUBLIC_KEY = "ffDHklbQMH1PnryFLzGoyCi-5MPS37ILdFYNgltpmYY";
 
 export type Trip = {
   /** URL-safe slug used as the Next.js route param */
