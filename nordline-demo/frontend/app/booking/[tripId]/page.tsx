@@ -205,7 +205,7 @@ function BookingFlow({ trip }: { trip: Trip }) {
     <>
       <Layout ctx={ctx} />
       <Script
-        src={`${process.env.NEXT_PUBLIC_BOOKING_BACKEND_URL || "http://localhost:8000"}/widget.js`}
+        src="https://pacectrl-production.up.railway.app/widget.js"
         strategy="afterInteractive"
         onLoad={handleScriptLoad}
       />
