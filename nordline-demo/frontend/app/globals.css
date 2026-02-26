@@ -1,0 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --nordline-blue: #0a3d62;
+  --nordline-teal: #1a7a6e;
+  --nordline-light: #e8f4f3;
+  --nordline-gold: #e8a838;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background-color: #f0f7f6;
+  color: #1a2e35;
+}
+
+/* Widget container sizing */
+#pace-widget {
+  width: 100%;
+}
