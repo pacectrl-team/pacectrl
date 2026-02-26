@@ -51,9 +51,11 @@ Set these in the Railway dashboard under each service's **Variables** tab. Never
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_BOOKING_BACKEND_URL` | Public URL of the backend service deployed above (e.g. `https://your-backend.up.railway.app`) — also used as the base URL for the widget script |
+| `NEXT_PUBLIC_BOOKING_BACKEND_URL` | **Public** URL of the nordline demo backend service (e.g. `https://nordline-demo-backend-production.up.railway.app`). Must be a public HTTPS URL — Railway internal URLs (`*.railway.internal`) are not reachable from the browser. |
 
-> The `NEXT_PUBLIC_` prefix makes the variable available in the browser bundle. Do not put secrets in this variable.
+> The `NEXT_PUBLIC_` prefix embeds the value into the browser bundle. Never use Railway private/internal URLs here.
+>
+> The PaceCtrl widget script URL is hardcoded to `https://pacectrl-production.up.railway.app/widget.js` — no variable needed.
 
 ---
 
