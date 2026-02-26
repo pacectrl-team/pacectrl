@@ -1,0 +1,55 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050B14" stop-opacity="0.3" />
+      <stop offset="50%" stop-color="#0A192F" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#112240" stop-opacity="0.7" />
+    </linearGradient>
+    
+    <linearGradient id="nGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.4" />
+    </linearGradient>
+    
+    <linearGradient id="auroraGreen" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00FF87" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#60EFFF" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#00FF87" stop-opacity="0" />
+    </linearGradient>
+    
+    <linearGradient id="auroraPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B066FE" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#63E2FF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#B066FE" stop-opacity="0" />
+    </linearGradient>
+
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="24" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <filter id="glow-small" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Deep Space/Ocean Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" stroke="rgba(255, 255, 255, 0.15)" stroke-width="4" />
+  
+  <!-- Stars / Sparkles -->
+  <circle cx="100" cy="120" r="2" fill="#FFF" opacity="0.6" />
+  <circle cx="400" cy="80" r="3" fill="#FFF" opacity="0.8" />
+  <circle cx="350" cy="200" r="1.5" fill="#FFF" opacity="0.4" />
+  <circle cx="150" cy="250" r="2.5" fill="#FFF" opacity="0.7" />
+  <circle cx="450" cy="300" r="2" fill="#FFF" opacity="0.5" />
+  
+  <!-- Aurora Waves -->
+  <path d="M -100 250 C 100 100, 300 400, 600 150 L 600 600 L -100 600 Z" fill="url(#auroraPurple)" filter="url(#glow)" />
+  <path d="M -100 350 C 150 200, 350 450, 600 250 L 600 600 L -100 600 Z" fill="url(#auroraGreen)" filter="url(#glow)" />
+  
+  <!-- Stylized 'N' for Nordline -->
+  <g filter="url(#glow-small)">
+    <path d="M 170 360 L 170 150 L 340 360 L 340 150" stroke="url(#nGradient)" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+</svg>
