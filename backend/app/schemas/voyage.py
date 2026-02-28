@@ -45,6 +45,7 @@ class Voyage(VoyageBase):
     created_at: datetime
     widget_config_id: Optional[int] = None
     ship_id: int
+    intent_count: int = 0
 
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility

@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 
 from app.core.database import get_db
@@ -12,6 +13,7 @@ from app.models.operator import Operator
 from app.models.user import User
 from app.models.voyage import Voyage
 from app.models.voyage_creation_rule import VoyageCreationRule
+from app.models.choice_intent import ChoiceIntent
 from app.models.widget_config import WidgetConfig
 from app.models.route import Route
 from app.models.ship import Ship
@@ -184,6 +186,24 @@ def ensure_voyage(
     db.commit()
     db.refresh(db_voyage)
     return db_voyage
+def _attach_intent_counts(db: Session, voyages: list[Voyage]) -> list[dict]:
+    """Attach intent_count to each voyage."""
+    voyage_ids = [v.id for v in voyages]
+    if not voyage_ids:
+        return []
+    counts = (
+        db.query(ChoiceIntent.voyage_id, func.count(ChoiceIntent.intent_id))
+        .filter(ChoiceIntent.voyage_id.in_(voyage_ids))
+        .group_by(ChoiceIntent.voyage_id)
+        .all()
+    )
+    count_map = {vid: cnt for vid, cnt in counts}
+    results = []
+    for v in voyages:
+        d = {c.name: getattr(v, c.name) for c in v.__table__.columns}
+        d["intent_count"] = count_map.get(v.id, 0)
+        results.append(d)
+    return results
 
 
 @router.get("/", response_model=List[VoyageSchema])
@@ -192,8 +212,8 @@ def list_voyages(
     current_user: User = Depends(get_current_user),
 ):
     """List voyages for the current operator."""
-
-    return db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id).all()
+    voyages = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id).all()
+    return _attach_intent_counts(db, voyages)
 
 
 @router.get("/{voyage_id}", response_model=VoyageSchema)
@@ -211,7 +231,7 @@ def get_voyage(
     if db_voyage.operator_id != current_user.operator_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
-    return db_voyage
+    return _attach_intent_counts(db, [db_voyage])[0]
 
 
 @router.patch("/{voyage_id}", response_model=VoyageSchema, dependencies=[Depends(require_admin)])
@@ -320,14 +340,14 @@ def delete_voyage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a voyage. Only allowed when there are no confirmed choices on it."""
+    """Delete a voyage. Cascades to related choice intents. Only allowed when there are no confirmed choices on it."""
 
     db_voyage = db.query(Voyage).filter(Voyage.id == voyage_id).first()
     if not db_voyage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voyage not found")
 
     if db_voyage.operator_id != current_user.operator_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot delete voyages for another operator")
 
     # Prevent deletion if confirmed bookings already exist — that data should be kept for auditing.
     confirmed_count = db.query(ConfirmedChoice).filter(ConfirmedChoice.voyage_id == voyage_id).count()
@@ -339,3 +359,4 @@ def delete_voyage(
 
     db.delete(db_voyage)
     db.commit()
+    return None
