@@ -95,6 +95,27 @@ def generate_widget_key(
     return {"public_key": new_key}
 
 
+@router.get(
+    "/{operator_id}/widget-key",
+    response_model=dict,
+)
+def get_widget_key(
+    operator_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return the current widget public key for the operator. Returns null if none has been generated."""
+
+    if operator_id != current_user.operator_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    db_operator = db.query(Operator).filter(Operator.id == operator_id).first()
+    if not db_operator:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
+
+    return {"public_key": db_operator.public_key}
+
+
 @router.delete(
     "/{operator_id}/widget-key",
     response_model=dict,
