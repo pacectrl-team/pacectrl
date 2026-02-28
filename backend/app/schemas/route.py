@@ -12,6 +12,7 @@ class RouteBase(BaseModel):
     arrival_port: str = Field(..., min_length=1, max_length=255)
     departure_time: time
     arrival_time: time
+    duration_nights: int = Field(0, ge=0)
     route_geometry: Optional[dict] = None
     is_active: bool = True
 
@@ -36,6 +37,7 @@ class RouteUpdate(BaseModel):
     arrival_port: Optional[str] = Field(None, min_length=1, max_length=255)
     departure_time: Optional[time] = None
     arrival_time: Optional[time] = None
+    duration_nights: Optional[int] = Field(None, ge=0)
     route_geometry: Optional[dict] = None
     is_active: Optional[bool] = None
 

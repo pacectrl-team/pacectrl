@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -57,7 +59,13 @@ def create_voyage(
     if db_ship.operator_id != current_user.operator_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ship belongs to another operator")
 
-    if voyage.arrival_date < voyage.departure_date:
+    # Derive arrival_date from the route's duration_nights if the caller did not supply one.
+    if voyage.arrival_date is None:
+        arrival_date = voyage.departure_date + timedelta(days=db_route.duration_nights)
+    else:
+        arrival_date = voyage.arrival_date
+
+    if arrival_date < voyage.departure_date:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Arrival date cannot be before departure date")
 
     existing_route_departure = db.query(Voyage).filter(
@@ -80,7 +88,7 @@ def create_voyage(
         route_id=voyage.route_id,
         ship_id=voyage.ship_id,
         departure_date=voyage.departure_date,
-        arrival_date=voyage.arrival_date,
+        arrival_date=arrival_date,
     )
     db.add(db_voyage)
     db.commit()
@@ -177,8 +185,18 @@ def update_voyage(
 
     if voyage_update.departure_date is not None:
         db_voyage.departure_date = voyage_update.departure_date
-    if voyage_update.arrival_date is not None:
+
+    # Auto-derive arrival_date when departure_date or route changes but arrival_date is not explicitly set.
+    departure_or_route_changed = (
+        voyage_update.departure_date is not None or "route_id" in voyage_update.model_fields_set
+    )
+    if "arrival_date" in voyage_update.model_fields_set:
+        # Caller explicitly provided arrival_date — use it as the override.
         db_voyage.arrival_date = voyage_update.arrival_date
+    elif departure_or_route_changed:
+        # Re-derive from the (potentially updated) route's duration_nights.
+        resolved_route = db.query(Route).filter(Route.id == db_voyage.route_id).first()
+        db_voyage.arrival_date = db_voyage.departure_date + timedelta(days=resolved_route.duration_nights)
 
     if db_voyage.arrival_date < db_voyage.departure_date:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Arrival date cannot be before departure date")

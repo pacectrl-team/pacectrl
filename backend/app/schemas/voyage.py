@@ -17,8 +17,14 @@ class VoyageBase(BaseModel):
 
 
 class VoyageCreate(VoyageBase):
-    """Schema for creating a voyage."""
-    pass  # All fields required except optionals
+    """
+    Schema for creating a voyage.
+
+    arrival_date is optional — if omitted, it is automatically derived from the
+    route's duration_nights (arrival_date = departure_date + duration_nights days).
+    Pass an explicit arrival_date to override the route default.
+    """
+    arrival_date: Optional[date] = None  # type: ignore[assignment]  # overrides required field in VoyageBase
 
 
 class VoyageUpdate(BaseModel):
