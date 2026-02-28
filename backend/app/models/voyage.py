@@ -11,8 +11,8 @@ class Voyage(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)  # voyage_id
     operator_id = Column(Integer, ForeignKey("operators.id", ondelete="CASCADE"), nullable=False)  # FK to operators
-    external_trip_id = Column(String, nullable=True)
-    widget_config_id = Column(Integer, ForeignKey("widget_configs.id", ondelete="SET NULL"), nullable=True)
+    external_trip_id = Column(String, nullable=False)
+    widget_config_id = Column(Integer, ForeignKey("widget_configs.id", ondelete="RESTRICT"), nullable=False)
     route_id = Column(Integer, ForeignKey("routes.id", ondelete="RESTRICT"), nullable=False, index=True)
     ship_id = Column(Integer, ForeignKey("ships.id", ondelete="RESTRICT"), nullable=False, index=True)
     departure_date = Column(Date, nullable=False)

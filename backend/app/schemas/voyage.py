@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 class VoyageBase(BaseModel):
     """Base schema for voyage data."""
     operator_id: int
-    external_trip_id: Optional[str] = None
-    widget_config_id: Optional[int] = None
+    external_trip_id: str
+    widget_config_id: int
     route_id: int
     ship_id: int
     departure_date: date
@@ -43,7 +43,6 @@ class Voyage(VoyageBase):
     """Schema for voyage responses (includes ID and timestamps)."""
     id: int
     created_at: datetime
-    widget_config_id: Optional[int] = None
     ship_id: int
     intent_count: int = 0
 
