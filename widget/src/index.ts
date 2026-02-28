@@ -269,6 +269,13 @@ const BASE_STYLES = `
     color: rgba(11, 31, 41, 0.9);
   }
 
+  .pcw-stat-sub {
+    font-size: 0.78em;
+    color: rgba(11, 31, 41, 0.55);
+    line-height: 1.3;
+    min-height: 1em; /* reserve space so cards don't shift height */
+  }
+
   /* ---------- Footnote ---------- */
 
   .pcw-footnote {
@@ -718,49 +725,69 @@ function formatAddedMinutes(minutesDelta: number): string {
 }
 
 /**
- * Format a full arrival time string. If the config provides a default arrival
- * datetime we offset it by the delay and show e.g. "14:35 (+6 min)".
- * When no baseline arrival is available we fall back to just the delta.
+ * Return separate base arrival time and delta strings for the arrival stat.
+ * When a default arrival datetime is available the base is the adjusted
+ * clock time (e.g. "14:35") and the delta is the signed offset (e.g. "+6 min").
+ * Without a baseline only the delta string is meaningful; base will be null.
  */
-function formatArrivalTime(
+function formatArrivalParts(
   defaultArrivalDatetime: string | null | undefined,
   delayMinutes: number
-): string {
+): { base: string | null; delta: string } {
+  const delta = formatAddedMinutes(delayMinutes);
   if (defaultArrivalDatetime) {
     const baseDate = new Date(defaultArrivalDatetime);
     if (!Number.isNaN(baseDate.getTime())) {
       const adjusted = new Date(baseDate.getTime() + delayMinutes * 60_000);
       const hh = String(adjusted.getHours()).padStart(2, "0");
       const mm = String(adjusted.getMinutes()).padStart(2, "0");
-      const delta = formatAddedMinutes(delayMinutes);
-      return `${hh}:${mm} (${delta})`;
+      return { base: `${hh}:${mm}`, delta };
     }
   }
   // Fallback when no baseline arrival is known
-  return formatAddedMinutes(delayMinutes);
+  return { base: null, delta };
 }
 
 /**
- * Format emissions showing the total amount and a parenthetical delta vs
- * standard so that the end user sees both absolute and relative impact,
- * e.g. "124 kg CO₂ (saves 18 kg)" or "142 kg CO₂ (+0 kg)".
+ * Format a CO₂ mass amount in kg, switching to tonnes (t) for values ≥ 1 000 kg.
+ * Pass `useTonnes` to force the same unit as a companion value so that the
+ * main number and its delta always appear in the same unit.
  */
-function formatEmissionsWithDelta(
+function formatCO2(kg: number, useTonnes: boolean): string {
+  if (useTonnes) {
+    return `${formatNumber(kg / 1000, 2)} t CO\u2082`;
+  }
+  return `${Math.round(kg)} kg CO\u2082`;
+}
+
+/**
+ * Build separate main (total) and sub (delta) strings for the emissions stat.
+ * Both values use the same unit: tonnes when total ≥ 1 000 kg, kilograms otherwise.
+ */
+function buildEmissionsParts(
   currentEmissions: number,
   standardEmissions: number
-): string {
-  const total = Math.round(currentEmissions);
-  const delta = standardEmissions - currentEmissions;
-  const absDelta = Math.abs(Math.round(delta));
-  let suffix: string;
-  if (absDelta === 0) {
-    suffix = "(+0 kg)";
-  } else if (delta > 0) {
-    suffix = `(saves ${absDelta} kg)`;
-  } else {
-    suffix = `(+${absDelta} kg)`;
+): { main: string; delta: string } {
+  const useTonnes = Math.abs(currentEmissions) >= 1000;
+  const main = formatCO2(currentEmissions, useTonnes);
+
+  const savingKg = standardEmissions - currentEmissions;
+  const absSavingKg = Math.abs(savingKg);
+
+  // Round to the same precision used for display to avoid "saves 0" artefacts
+  const displayedAbs = useTonnes
+    ? Math.round((absSavingKg / 1000) * 100) / 100  // 2 decimal places
+    : Math.round(absSavingKg);
+
+  if (displayedAbs === 0) {
+    return { main, delta: "same as standard" };
   }
-  return `${total} kg CO\u2082 ${suffix}`;
+
+  const deltaStr = formatCO2(absSavingKg, useTonnes);
+  if (savingKg > 0) {
+    return { main, delta: `saves ${deltaStr}` };
+  }
+  return { main, delta: `+${deltaStr}` };
 }
 
 function formatNumber(value: number, fractionDigits = 1): string {
@@ -856,11 +883,11 @@ async function postIntent(
  * DOM helpers
  * -------------------------------------------------------------------------*/
 
-/** Create a stat card (label + value) matching mood-widget look. */
+/** Create a stat card (label + value + optional sub-line) matching mood-widget look. */
 function createStat(
   label: string,
   initialValue: string
-): { wrapper: HTMLElement; value: HTMLSpanElement } {
+): { wrapper: HTMLElement; value: HTMLSpanElement; sub: HTMLSpanElement } {
   const wrapper = document.createElement("div");
   wrapper.className = "pcw-stat";
 
@@ -874,7 +901,12 @@ function createStat(
   valueEl.textContent = initialValue;
   wrapper.appendChild(valueEl);
 
-  return { wrapper, value: valueEl };
+  // Sub-line for delta / secondary info in a smaller font
+  const subEl = document.createElement("span");
+  subEl.className = "pcw-stat-sub";
+  wrapper.appendChild(subEl);
+
+  return { wrapper, value: valueEl, sub: subEl };
 }
 
 /* ---------------------------------------------------------------------------
@@ -1199,17 +1231,21 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       moodStat.value.textContent = moodText;
       moodStat.value.style.color = moodAccent;
 
-      // Arrival stat – show the actual estimated arrival time + delta
-      arrivalStat.value.textContent = formatArrivalTime(
+      // Arrival stat – main value is the adjusted clock time; delta is shown below in smaller font
+      const { base: arrivalBase, delta: arrivalDelta } = formatArrivalParts(
         config.default_arrival_datetime,
         metricsData.delayMinutes
       );
+      arrivalStat.value.textContent = arrivalBase ?? arrivalDelta;
+      arrivalStat.sub.textContent = arrivalBase ? arrivalDelta : "";
 
-      // Impact stat – show total emissions with delta vs standard
-      impactStat.value.textContent = formatEmissionsWithDelta(
+      // Emissions stat – main value is the total; delta vs standard is shown below in smaller font
+      const { main: emissionsMain, delta: emissionsDelta } = buildEmissionsParts(
         metricsData.emissions,
         config.anchors.standard.expected_emissions_kg_co2
       );
+      impactStat.value.textContent = emissionsMain;
+      impactStat.sub.textContent = emissionsDelta;
 
       return metricsData;
     };
