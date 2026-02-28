@@ -270,10 +270,38 @@ const BASE_STYLES = `
   }
 
   .pcw-stat-sub {
-    font-size: 0.78em;
-    color: rgba(11, 31, 41, 0.55);
-    line-height: 1.3;
-    min-height: 1em; /* reserve space so cards don't shift height */
+    font-size: 0.75em;
+    font-weight: 500;
+  }
+
+  .pcw-stat-sub:not(:empty) {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35em 0.55em;
+    border-radius: 6px;
+    background: rgba(11, 31, 41, 0.05);
+    color: rgba(11, 31, 41, 0.8);
+    margin-top: 0.15em;
+    width: fit-content;
+    border: 1px solid rgba(11, 31, 41, 0.05);
+    line-height: 1;
+  }
+
+  .pcw-stat-sub:empty {
+    display: block;
+    height: 1.5em; /* reserve space so cards don't shift height */
+  }
+
+  .pcw-stat-sub--good {
+    background: rgba(15, 157, 88, 0.1);
+    color: rgba(12, 123, 68, 0.95);
+    border-color: rgba(15, 157, 88, 0.15);
+  }
+
+  .pcw-stat-sub--bad {
+    background: rgba(192, 57, 43, 0.08);
+    color: rgba(192, 57, 43, 0.95);
+    border-color: rgba(192, 57, 43, 0.12);
   }
 
   /* ---------- Footnote ---------- */
@@ -767,7 +795,7 @@ function formatCO2(kg: number, useTonnes: boolean): string {
 function buildEmissionsParts(
   currentEmissions: number,
   standardEmissions: number
-): { main: string; delta: string } {
+): { main: string; delta: string; variant: "neutral" | "good" | "bad" } {
   const useTonnes = Math.abs(currentEmissions) >= 1000;
   const main = formatCO2(currentEmissions, useTonnes);
 
@@ -780,14 +808,14 @@ function buildEmissionsParts(
     : Math.round(absSavingKg);
 
   if (displayedAbs === 0) {
-    return { main, delta: "same as standard" };
+    return { main, delta: "same as standard", variant: "neutral" };
   }
 
   const deltaStr = formatCO2(absSavingKg, useTonnes);
   if (savingKg > 0) {
-    return { main, delta: `saves ${deltaStr}` };
+    return { main, delta: `saves ${deltaStr}`, variant: "good" };
   }
-  return { main, delta: `+${deltaStr}` };
+  return { main, delta: `+${deltaStr}`, variant: "bad" };
 }
 
 function formatNumber(value: number, fractionDigits = 1): string {
@@ -1238,14 +1266,16 @@ async function mountWidget(options: NormalizedOptions): Promise<InitResult> {
       );
       arrivalStat.value.textContent = arrivalBase ?? arrivalDelta;
       arrivalStat.sub.textContent = arrivalBase ? arrivalDelta : "";
+      arrivalStat.sub.className = "pcw-stat-sub";
 
       // Emissions stat – main value is the total; delta vs standard is shown below in smaller font
-      const { main: emissionsMain, delta: emissionsDelta } = buildEmissionsParts(
+      const { main: emissionsMain, delta: emissionsDelta, variant: emissionsVariant } = buildEmissionsParts(
         metricsData.emissions,
         config.anchors.standard.expected_emissions_kg_co2
       );
       impactStat.value.textContent = emissionsMain;
       impactStat.sub.textContent = emissionsDelta;
+      impactStat.sub.className = `pcw-stat-sub${emissionsVariant === "neutral" ? "" : ` pcw-stat-sub--${emissionsVariant}`}`;
 
       return metricsData;
     };
