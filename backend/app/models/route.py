@@ -16,6 +16,9 @@ class Route(Base):
     arrival_port = Column(String, nullable=False)
     departure_time = Column(Time, nullable=False)
     arrival_time = Column(Time, nullable=False)
+    # Number of calendar days from departure to arrival (0 = same day, 1 = overnight, etc.)
+    # Used to auto-derive arrival_date when creating a voyage from this route.
+    duration_nights = Column(Integer, nullable=False, server_default=text("0"), default=0)
     route_geometry = Column(JSON, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
