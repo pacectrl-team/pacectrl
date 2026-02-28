@@ -25,3 +25,5 @@ class Operator(Base):
     ships = relationship("Ship", back_populates="operator", cascade="all, delete-orphan")
     # Relationship to routes, one-to-many
     routes = relationship("Route", back_populates="operator", cascade="all, delete-orphan")
+    # Relationship to voyage creation rules, one-to-many
+    voyage_creation_rules = relationship("VoyageCreationRule", back_populates="operator", cascade="all, delete-orphan")

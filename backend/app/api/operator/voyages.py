@@ -6,15 +6,19 @@ from sqlalchemy import func
 from typing import List
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_admin
+from app.core.deps import get_current_user, get_operator_from_jwt_or_secret, require_admin
+from app.core.pattern import extract_departure_date
 from app.models.confirmed_choice import ConfirmedChoice
+from app.models.operator import Operator
 from app.models.user import User
 from app.models.voyage import Voyage
+from app.models.voyage_creation_rule import VoyageCreationRule
 from app.models.choice_intent import ChoiceIntent
 from app.models.widget_config import WidgetConfig
 from app.models.route import Route
 from app.models.ship import Ship
 from app.schemas.voyage import VoyageCreate, VoyageUpdate, Voyage as VoyageSchema
+from app.schemas.voyage_creation_rule import VoyageEnsure
 
 router = APIRouter(
     prefix="/voyages",
@@ -98,6 +102,90 @@ def create_voyage(
     return db_voyage
 
 
+@router.post(
+    "/ensure",
+    response_model=VoyageSchema,
+    status_code=status.HTTP_200_OK,
+)
+def ensure_voyage(
+    payload: VoyageEnsure,
+    db: Session = Depends(get_db),
+    operator: Operator = Depends(get_operator_from_jwt_or_secret),
+):
+    """
+    Ensure a voyage exists for the given external_trip_id.
+
+    Accepts either a JWT Bearer token or an X-Webhook-Secret header, so
+    operator backends can call this without a user login session.
+
+    Behaviour:
+    1. If a voyage already exists for (operator, external_trip_id) it is
+       returned immediately — the call is idempotent.
+    2. Active voyage creation rules are tested in order (by id).  The first
+       rule whose pattern matches the external_trip_id is used to create
+       a new voyage (departure_date extracted from the pattern; arrival_date
+       derived from the route's duration_nights).
+    3. If no rule matches, 404 is returned.
+    """
+
+    # Idempotency — return the voyage if it already exists.
+    existing = (
+        db.query(Voyage)
+        .filter(
+            Voyage.operator_id == operator.id,
+            Voyage.external_trip_id == payload.external_trip_id,
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    # Try each active rule in insertion order.
+    rules = (
+        db.query(VoyageCreationRule)
+        .filter(
+            VoyageCreationRule.operator_id == operator.id,
+            VoyageCreationRule.is_active == True,  # noqa: E712
+        )
+        .order_by(VoyageCreationRule.id.asc())
+        .all()
+    )
+
+    matched_rule = None
+    departure_date = None
+
+    for rule in rules:
+        d = extract_departure_date(rule.pattern, payload.external_trip_id)
+        if d is not None:
+            matched_rule = rule
+            departure_date = d
+            break
+
+    if matched_rule is None or departure_date is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active voyage creation rule matched this external_trip_id",
+        )
+
+    # Fetch the route to derive arrival_date from duration_nights.
+    route = db.query(Route).filter(Route.id == matched_rule.route_id).first()
+    arrival_date = departure_date + timedelta(days=route.duration_nights)
+
+    db_voyage = Voyage(
+        operator_id=operator.id,
+        external_trip_id=payload.external_trip_id,
+        route_id=matched_rule.route_id,
+        ship_id=matched_rule.ship_id,
+        widget_config_id=matched_rule.widget_config_id,
+        departure_date=departure_date,
+        arrival_date=arrival_date,
+        status="planned",
+        voyage_creation_rule_id=matched_rule.id,
+    )
+    db.add(db_voyage)
+    db.commit()
+    db.refresh(db_voyage)
+    return db_voyage
 def _attach_intent_counts(db: Session, voyages: list[Voyage]) -> list[dict]:
     """Attach intent_count to each voyage."""
     voyage_ids = [v.id for v in voyages]
