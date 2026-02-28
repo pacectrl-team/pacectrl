@@ -286,6 +286,72 @@ const BASE_STYLES = `
     color: rgba(192, 57, 43, 0.95);
   }
 
+  /* ---------- Error View ---------- */
+
+  .pcw-error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2em 1em;
+    color: var(--pcw-text, rgba(11, 31, 41, 0.7));
+  }
+
+  .pcw-error-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+  }
+
+  .pcw-error-message {
+    font-size: 0.9em;
+    color: rgba(11, 31, 41, 0.6);
+  }
+
+  .pcw-ship-svg {
+    width: 96px;
+    height: 96px;
+    color: var(--pcw-text, #0b1f29);
+  }
+
+  @keyframes pcw-bobbing {
+    0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+    50% { transform: translateY(-3px) rotate(1.5deg); }
+  }
+
+  @keyframes pcw-waves {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes pcw-smoke-rise {
+    0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+    20% { opacity: 0.6; }
+    100% { transform: translate(-8px, -12px) scale(1.5); opacity: 0; }
+  }
+
+  .pcw-ship-hull {
+    animation: pcw-bobbing 4s ease-in-out infinite;
+    transform-origin: 32px 48px;
+  }
+
+  .pcw-sea-waves {
+    animation: pcw-waves 4s ease-in-out infinite;
+  }
+
+  .pcw-smoke-circ {
+    transform-origin: 24px 14px;
+    animation: pcw-smoke-rise 3s linear infinite;
+    opacity: 0;
+  }
+
+  .pcw-smoke-circ:nth-child(1) { animation-delay: 0s; }
+  .pcw-smoke-circ:nth-child(2) { animation-delay: 1s; }
+  .pcw-smoke-circ:nth-child(3) { animation-delay: 2s; }
+
   /* ---------- Responsive ---------- */
 
   @media (max-width: 640px) {
@@ -705,7 +771,37 @@ function formatNumber(value: number, fractionDigits = 1): string {
 }
 
 function renderError(target: HTMLElement, message: string): void {
-  target.innerHTML = `<div class="pcw-root"><div class="pcw-footnote pcw-footnote--error">${message}</div></div>`;
+  // Attempt to inject styles in case renderError is called before mountWidget injects them
+  injectStyles();
+
+  target.innerHTML = `
+    <div class="pcw-root">
+      <div class="pcw-error-container">
+        <svg class="pcw-ship-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g class="pcw-ship-hull">
+            <!-- Fumes / Smoke -->
+            <circle cx="24" cy="14" r="3" fill="currentColor" class="pcw-smoke-circ"/>
+            <circle cx="24" cy="14" r="3" fill="currentColor" class="pcw-smoke-circ"/>
+            <circle cx="24" cy="14" r="3" fill="currentColor" class="pcw-smoke-circ"/>
+            <!-- Funnel / Chimney -->
+            <path d="M26 24V16H22V24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <!-- Superstructure / Cabins -->
+            <path d="M18 34V26C18 24.9 18.9 24 20 24H38L42 34" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M14 44V34C14 32.9 14.9 32 16 32H48L52 44" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <!-- Hull -->
+            <path d="M10 44L14 52H50L58 44H10Z" fill="currentColor" fill-opacity="0.8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </g>
+          <g class="pcw-sea-waves">
+            <!-- Waves -->
+            <path d="M4 56C8 56 12 54 16 54C20 54 24 56 28 56C32 56 36 54 40 54C44 54 48 56 52 56C56 56 60 54 64 54" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 60C12 60 16 58 20 58C24 58 28 60 32 60C36 60 40 58 44 58C48 58 52 60 56 60C60 60 64 58 68 58" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.5"/>
+          </g>
+        </svg>
+        <div class="pcw-error-title">Something went wrong</div>
+        <div class="pcw-error-message">${message}</div>
+      </div>
+    </div>
+  `;
 }
 
 /* ---------------------------------------------------------------------------
