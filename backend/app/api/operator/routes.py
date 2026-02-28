@@ -62,6 +62,7 @@ def create_route(
         arrival_port=payload.arrival_port,
         departure_time=payload.departure_time,
         arrival_time=payload.arrival_time,
+        duration_nights=payload.duration_nights,
         route_geometry=payload.route_geometry,
         is_active=payload.is_active,
     )
@@ -143,6 +144,8 @@ def update_route(
         db_route.departure_time = payload.departure_time
     if payload.arrival_time is not None:
         db_route.arrival_time = payload.arrival_time
+    if payload.duration_nights is not None:
+        db_route.duration_nights = payload.duration_nights
     if "route_geometry" in payload.model_fields_set:
         db_route.route_geometry = payload.route_geometry
     if payload.is_active is not None:
