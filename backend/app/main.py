@@ -25,7 +25,7 @@ from app.api.operator.voyage_creation_rules import router as voyage_creation_rul
 
 
 
-# Initialize FastAPI application
+# Initialize FastAPI application.
 app = FastAPI(title="PaceCtrl API")
 
 # Add API logging middleware
