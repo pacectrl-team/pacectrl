@@ -14,6 +14,7 @@ class VoyageBase(BaseModel):
     departure_date: date
     arrival_date: date
     status: str = Field("planned", pattern="^(planned|completed|cancelled)$")
+    voyage_creation_rule_id: Optional[int] = None
 
 
 class VoyageCreate(VoyageBase):

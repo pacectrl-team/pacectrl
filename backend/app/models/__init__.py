@@ -9,3 +9,4 @@ from app.models.confirmed_choice import ConfirmedChoice  # noqa: F401
 from app.models.ship import Ship  # noqa: F401
 from app.models.route import Route  # noqa: F401
 from app.models.speed_to_emissions_estimate import SpeedToEmissionsEstimate  # noqa: F401
+from app.models.voyage_creation_rule import VoyageCreationRule  # noqa: F401

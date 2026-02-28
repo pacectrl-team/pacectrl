@@ -21,6 +21,7 @@ from app.api.public.choice_intents import router as public_choice_intents_router
 from app.api.public.widget_assets import router as widget_assets_router
 from app.api.operator.dashboard import router as dashboard_router
 from app.api.operator.audit_logs import router as audit_logs_router
+from app.api.operator.voyage_creation_rules import router as voyage_creation_rules_router
 
 
 
@@ -58,6 +59,7 @@ app.include_router(ships_router, prefix="/api/v1/operator")
 app.include_router(routes_router, prefix="/api/v1/operator")
 app.include_router(dashboard_router, prefix="/api/v1/operator")
 app.include_router(audit_logs_router, prefix="/api/v1/operator")
+app.include_router(voyage_creation_rules_router, prefix="/api/v1/operator")
 
 # Public routes, no authentication
 app.include_router(public_widget_router, prefix="/api/v1/public")

@@ -19,6 +19,12 @@ class Voyage(Base):
     arrival_date = Column(Date, nullable=False)
     status = Column(String, nullable=False, default="planned")  # planned | completed | cancelled
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    # FK to the rule that auto-created this voyage (nullable — manually created voyages have no rule).
+    voyage_creation_rule_id = Column(
+        Integer,
+        ForeignKey("voyage_creation_rules.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Unique constraint on (operator_id, external_trip_id) to ensure uniqueness per operator
     __table_args__ = (
@@ -31,3 +37,4 @@ class Voyage(Base):
     widget_config = relationship("WidgetConfig", back_populates="voyages")
     route = relationship("Route", back_populates="voyages")
     ship = relationship("Ship", back_populates="voyages")
+    voyage_creation_rule = relationship("VoyageCreationRule", back_populates="voyages")
