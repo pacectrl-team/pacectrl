@@ -94,8 +94,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
 
     try {
       const durationNightsNum = Number(createDurationNights)
-      if (!createDurationNights || !Number.isFinite(durationNightsNum) || durationNightsNum <= 0) {
-        setRoutesError('Duration (nights) must be a positive number.')
+      if (createDurationNights === '' || !Number.isFinite(durationNightsNum) || durationNightsNum < 0) {
+        setRoutesError('Duration (nights) must be a non-negative number.')
         return
       }
 
@@ -159,8 +159,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
     if (!token || !selectedRoute) return
 
     const editDurationNightsNum = Number(editDurationNights)
-    if (editDurationNights !== '' && (!Number.isFinite(editDurationNightsNum) || editDurationNightsNum <= 0)) {
-      setRoutesError('Duration (nights) must be a positive number.')
+    if (editDurationNights !== '' && (!Number.isFinite(editDurationNightsNum) || editDurationNightsNum < 0)) {
+      setRoutesError('Duration (nights) must be a non-negative number.')
       return
     }
 
@@ -362,7 +362,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
                   onChange={(event) => setCreateDurationNights(event.target.value)}
                   fullWidth
                   required
-                  inputProps={{ min: 1 }}
+                  inputProps={{ min: 0 }}
                 />
               </Stack>
             </CardContent>
@@ -582,7 +582,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
                     value={editDurationNights}
                     onChange={(event) => setEditDurationNights(event.target.value)}
                     fullWidth
-                    inputProps={{ min: 1 }}
+                    inputProps={{ min: 0 }}
                   />
                 </Stack>
               </CardContent>
