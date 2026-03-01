@@ -44,6 +44,7 @@ export type RouteSummary = {
   arrival_port: string
   departure_time: string
   arrival_time: string
+  duration_nights: number
   route_geometry: RouteGeometry | null
   is_active: boolean
   operator_id: number
