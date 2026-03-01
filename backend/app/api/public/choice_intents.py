@@ -38,6 +38,13 @@ def create_choice_intent(
     if not voyage:
         raise HTTPException(status_code=404, detail="Voyage not found")
 
+    # Reject intent submissions for voyages that are no longer accepting passengers
+    if voyage.status != "planned":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Voyage is '{voyage.status}' and no longer accepting speed preferences",
+        )
+
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=DEFAULT_INTENT_TTL_MINUTES)
     intent_id = generate_intent_id()
 
