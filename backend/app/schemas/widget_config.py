@@ -1,7 +1,27 @@
+import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Accepts: #RGB, #RRGGBB, #RGBA, #RRGGBBAA,
+#          rgb(...), rgba(...), hsl(...), hsla(...), color(...)
+#          CSS named colours (letters only, e.g. "white", "transparent")
+_CSS_COLOR_RE = re.compile(
+    r"^(#[0-9a-fA-F]{3,8}"
+    r"|(?:rgb|rgba|hsl|hsla|color)\([^)]*\)"
+    r"|[a-zA-Z][-a-zA-Z]*)$"
+)
+
+
+def _validate_css_color(value: str) -> str:
+    """Raise ValueError if value is not a recognisable CSS colour."""
+    if not _CSS_COLOR_RE.match(value.strip()):
+        raise ValueError(
+            f"{value!r} is not a valid CSS colour. "
+            "Use hex (#RGB / #RRGGBB), rgb(), rgba(), hsl(), hsla(), or a named colour."
+        )
+    return value
 
 
 class ThemeData(BaseModel):
@@ -30,6 +50,28 @@ class ThemeData(BaseModel):
     font_family: str = Field(..., description="Font family")
     rounding_px: int = Field(..., ge=0, description="Rounding radius in pixels")
     slider_dot_color: str = Field(..., description="Color for slider dot / thumb")
+
+    # --- CSS colour validators ---
+    @field_validator(
+        "slider_slow_color",
+        "slider_fast_color",
+        "font_color",
+        "background_color",
+        "border_color",
+        "slider_dot_color",
+    )
+    @classmethod
+    def check_required_colors(cls, v: str) -> str:
+        """Validate that all required colour fields contain a valid CSS colour."""
+        return _validate_css_color(v)
+
+    @field_validator("background_hue_slow_color", "background_hue_fast_color")
+    @classmethod
+    def check_optional_colors(cls, v: Optional[str]) -> Optional[str]:
+        """Validate optional colour fields when a value is provided."""
+        if v is not None:
+            return _validate_css_color(v)
+        return v
 
     # Customisable labels shown inside the widget
     slider_label: Optional[str] = Field(None, description="Label text above the slider (default: 'Vote on the trip speed')")

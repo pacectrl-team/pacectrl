@@ -26,4 +26,6 @@ class ConfirmedChoice(Base):
 
         CheckConstraint("slider_value >= 0 AND slider_value <= 1", name="ck_confirmed_choices_slider_range"),
         CheckConstraint("delta_pct_from_standard >= -100 AND delta_pct_from_standard <= 100", name="ck_confirmed_choices_delta_pct_range"),
+        # Speed must be positive if set
+        CheckConstraint("selected_speed_kn IS NULL OR selected_speed_kn > 0", name="ck_confirmed_choices_speed_positive"),
     )

@@ -38,6 +38,15 @@ class SpeedToEmissionsEstimate(Base):
         CheckConstraint("profile IN ('slow','standard','fast')", name="ck_speed_estimates_profile"),
         CheckConstraint("speed_knots > 0", name="ck_speed_estimates_speed_positive"),
         CheckConstraint("expected_emissions_kg_co2 >= 0", name="ck_speed_estimates_emissions_non_negative"),
+        # Slow voyages arrive later (>= 0 min), fast voyages arrive earlier (<= 0 min)
+        CheckConstraint(
+            "profile != 'slow' OR expected_arrival_delta_minutes >= 0",
+            name="ck_speed_estimates_slow_delta_non_negative",
+        ),
+        CheckConstraint(
+            "profile != 'fast' OR expected_arrival_delta_minutes <= 0",
+            name="ck_speed_estimates_fast_delta_non_positive",
+        ),
     )
 
     route = relationship("Route", back_populates="speed_estimates")

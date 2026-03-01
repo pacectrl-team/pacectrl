@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 class RouteBase(BaseModel):
@@ -15,6 +15,31 @@ class RouteBase(BaseModel):
     duration_nights: int = Field(0, ge=0)
     route_geometry: Optional[dict] = None
     is_active: bool = True
+
+    @model_validator(mode="after")
+    def validate_route_logic(self) -> "RouteBase":
+        """Enforce route sanity constraints."""
+        # Departure and arrival must differ
+        if (
+            self.departure_port
+            and self.arrival_port
+            and self.departure_port.strip().lower() == self.arrival_port.strip().lower()
+        ):
+            raise ValueError("departure_port and arrival_port must be different")
+
+        # For same-day routes, arrival must come after departure
+        if (
+            self.duration_nights == 0
+            and self.departure_time is not None
+            and self.arrival_time is not None
+            and self.arrival_time <= self.departure_time
+        ):
+            raise ValueError(
+                f"For same-day routes (duration_nights=0), "
+                f"arrival_time ({self.arrival_time}) must be after "
+                f"departure_time ({self.departure_time})"
+            )
+        return self
 
     @field_serializer("departure_time", "arrival_time")
     @classmethod

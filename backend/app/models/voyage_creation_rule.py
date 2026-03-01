@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -30,6 +30,10 @@ class VoyageCreationRule(Base):
 
     # Human-readable label for the rule (unique per operator).
     name = Column(String, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("operator_id", "name", name="uq_voyage_creation_rules_operator_name"),
+    )
 
     # Template string, e.g. "HEL-TLL-{YYYY}-{MM}-{DD}"
     pattern = Column(String, nullable=False)
