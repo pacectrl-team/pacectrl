@@ -301,7 +301,12 @@ def update_voyage(
         voyage_update.departure_date is not None or "route_id" in voyage_update.model_fields_set
     )
     if "arrival_date" in voyage_update.model_fields_set:
-        # Caller explicitly provided arrival_date — use it as the override.
+        # Caller explicitly provided arrival_date — validate it is not null before applying.
+        if voyage_update.arrival_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="arrival_date cannot be unset",
+            )
         db_voyage.arrival_date = voyage_update.arrival_date
     elif departure_or_route_changed:
         # Re-derive from the (potentially updated) route's duration_nights.

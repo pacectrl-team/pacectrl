@@ -66,6 +66,10 @@ def create_confirmed_choice(
     )
 
     db.add(db_choice)
+
+    # Mark the intent as consumed so it cannot be used again
+    intent.consumed_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(db_choice)
 
