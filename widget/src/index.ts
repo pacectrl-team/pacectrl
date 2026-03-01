@@ -270,38 +270,29 @@ const BASE_STYLES = `
   }
 
   .pcw-stat-sub {
-    font-size: 0.75em;
+    font-size: 0.85em;
     font-weight: 500;
-  }
-
-  .pcw-stat-sub:not(:empty) {
-    display: inline-flex;
+    margin-top: 0.25em;
+    color: rgba(11, 31, 41, 0.65);
+    line-height: 1.2;
+    display: flex;
     align-items: center;
-    padding: 0.35em 0.55em;
-    border-radius: 6px;
-    background: rgba(11, 31, 41, 0.05);
-    color: rgba(11, 31, 41, 0.8);
-    margin-top: 0.15em;
-    width: fit-content;
-    border: 1px solid rgba(11, 31, 41, 0.05);
-    line-height: 1;
+    gap: 0.25em;
   }
 
   .pcw-stat-sub:empty {
     display: block;
-    height: 1.5em; /* reserve space so cards don't shift height */
+    height: 1.2em; /* reserve space so cards don't shift height */
   }
 
   .pcw-stat-sub--good {
-    background: rgba(15, 157, 88, 0.1);
-    color: rgba(12, 123, 68, 0.95);
-    border-color: rgba(15, 157, 88, 0.15);
+    color: #0f8246;
+    font-weight: 600;
   }
 
   .pcw-stat-sub--bad {
-    background: rgba(192, 57, 43, 0.08);
-    color: rgba(192, 57, 43, 0.95);
-    border-color: rgba(192, 57, 43, 0.12);
+    color: #b92b1c;
+    font-weight: 600;
   }
 
   /* ---------- Footnote ---------- */
@@ -746,10 +737,10 @@ function formatDuration(minutes: number): string {
 function formatAddedMinutes(minutesDelta: number): string {
   const rounded = Math.round(minutesDelta);
   if (rounded === 0) {
-    return "+0 min";
+    return "\u00B1 0 min";
   }
   const sign = rounded > 0 ? "+" : "\u2212";
-  return `${sign}${formatDuration(Math.abs(rounded))}`;
+  return `${sign} ${formatDuration(Math.abs(rounded))}`;
 }
 
 /**
@@ -808,14 +799,14 @@ function buildEmissionsParts(
     : Math.round(absSavingKg);
 
   if (displayedAbs === 0) {
-    return { main, delta: "same as standard", variant: "neutral" };
+    return { main, delta: "baseline emissions", variant: "neutral" };
   }
 
   const deltaStr = formatCO2(absSavingKg, useTonnes);
   if (savingKg > 0) {
-    return { main, delta: `saves ${deltaStr}`, variant: "good" };
+    return { main, delta: `\u2193 saves ${deltaStr}`, variant: "good" };
   }
-  return { main, delta: `+${deltaStr}`, variant: "bad" };
+  return { main, delta: `\u2191 adds ${deltaStr}`, variant: "bad" };
 }
 
 function formatNumber(value: number, fractionDigits = 1): string {
