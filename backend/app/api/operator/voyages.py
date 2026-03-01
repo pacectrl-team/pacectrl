@@ -1,9 +1,9 @@
-from datetime import timedelta
+from datetime import timedelta, date
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from typing import List
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_operator_from_jwt_or_secret, require_admin
@@ -210,9 +210,32 @@ def _attach_intent_counts(db: Session, voyages: list[Voyage]) -> list[dict]:
 def list_voyages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    status_filter: Optional[str] = Query(
+        None,
+        alias="status",
+        pattern="^(planned|completed|cancelled)$",
+        description="Filter by voyage status",
+    ),
+    departure_date_from: Optional[date] = Query(
+        None,
+        description="Only return voyages departing on or after this date (YYYY-MM-DD)",
+    ),
+    departure_date_to: Optional[date] = Query(
+        None,
+        description="Only return voyages departing on or before this date (YYYY-MM-DD)",
+    ),
 ):
-    """List voyages for the current operator."""
-    voyages = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id).all()
+    """List voyages for the current operator, with optional filters."""
+    query = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id)
+
+    if status_filter is not None:
+        query = query.filter(Voyage.status == status_filter)
+    if departure_date_from is not None:
+        query = query.filter(Voyage.departure_date >= departure_date_from)
+    if departure_date_to is not None:
+        query = query.filter(Voyage.departure_date <= departure_date_to)
+
+    voyages = query.order_by(Voyage.departure_date.asc()).all()
     return _attach_intent_counts(db, voyages)
 
 
