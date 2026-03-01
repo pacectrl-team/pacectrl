@@ -39,6 +39,41 @@ type SpeedEstimateEntry = {
   data: SpeedAnchorsEstimate
 }
 
+const isPositiveNumber = (value: number) => Number.isFinite(value) && value > 0
+const isNegativeNumber = (value: number) => Number.isFinite(value) && value < 0
+const isNonNegative = (value: number) => Number.isFinite(value) && value >= 0
+
+const getSpeedAnchorsValidationError = (body: SpeedAnchorsEstimate): string | null => {
+  const positiveFields: Array<[string, number]> = [
+    ['Slow speed value', body.slow.speed_knots],
+    ['Slow emissions value', body.slow.expected_emissions_kg_co2],
+    ['Standard speed value', body.standard.speed_knots],
+    ['Standard emissions value', body.standard.expected_emissions_kg_co2],
+    ['Fast speed value', body.fast.speed_knots],
+    ['Fast emissions value', body.fast.expected_emissions_kg_co2],
+  ]
+
+  for (const [fieldName, value] of positiveFields) {
+    if (!isPositiveNumber(value)) {
+      return `${fieldName} must be positive.`
+    }
+  }
+
+  if (!isPositiveNumber(body.slow.expected_arrival_delta_minutes)) {
+    return 'Slow arrival Δ value must be positive.'
+  }
+
+  if (!isNonNegative(body.standard.expected_arrival_delta_minutes)) {
+    return 'Standard arrival Δ value must be non-negative.'
+  }
+
+  if (!isNegativeNumber(body.fast.expected_arrival_delta_minutes)) {
+    return 'Fast arrival Δ value must be negative.'
+  }
+
+  return null
+}
+
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
 const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 const SPEED_ESTIMATES_URL =
@@ -257,6 +292,12 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       },
     }
 
+    const validationError = getSpeedAnchorsValidationError(body)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setLoading(true)
     try {
       const response = await authFetch(
@@ -351,6 +392,12 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         expected_emissions_kg_co2: Number(editFastEmissions),
         expected_arrival_delta_minutes: Number(editFastDelta),
       },
+    }
+
+    const validationError = getSpeedAnchorsValidationError(body)
+    if (validationError) {
+      setEditError(validationError)
+      return
     }
 
     setEditLoading(true)
