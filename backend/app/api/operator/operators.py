@@ -6,7 +6,7 @@ from app.core.deps import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.security import hash_webhook_secret
 from app.models.operator import Operator
-from app.schemas.operator import Operator as OperatorSchema, OperatorCreate
+from app.schemas.operator import OperatorResponse, OperatorCreate
 
 router = APIRouter(
     prefix="/operators",
@@ -15,7 +15,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[OperatorSchema])
+@router.get("/", response_model=list[OperatorResponse])
 def list_operators(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -27,7 +27,7 @@ def list_operators(
 
 @router.post(
     "/",
-    response_model=OperatorSchema,
+    response_model=OperatorResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_admin)],
 )
@@ -47,7 +47,7 @@ def create_operator(operator: OperatorCreate, db: Session = Depends(get_db)):
     return db_operator
 
 
-@router.get("/{operator_id}", response_model=OperatorSchema)
+@router.get("/{operator_id}", response_model=OperatorResponse)
 def get_operator(
     operator_id: int,
     db: Session = Depends(get_db),

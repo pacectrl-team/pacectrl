@@ -26,11 +26,10 @@ def validate_username(value: str) -> str:
 def validate_password(value: str) -> str:
     """
     Validate password:
-    - Length between 5 and 64 characters
-    - For prototype: no strict character requirements
+    - Length between 8 and 64 characters
     """
-    if len(value) < 5:
-        raise ValueError("Password must be at least 5 characters long")
+    if len(value) < 8:
+        raise ValueError("Password must be at least 8 characters long")
     if len(value) > 64:
         raise ValueError("Password must be at most 64 characters long")
     return value

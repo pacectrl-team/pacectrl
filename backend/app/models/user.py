@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func
+from sqlalchemy import CheckConstraint, Column, Integer, String, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -16,6 +16,10 @@ class User(Base):
     password_hash = Column(String, nullable=False)  # Store hashed password
     role = Column(String, nullable=False, default="captain")  # 'admin' or 'captain'
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("role IN ('admin', 'captain')", name="ck_users_role"),
+    )
 
     # Relationship back to operator (optional, for easy queries)
     operator = relationship("Operator", back_populates="users")

@@ -11,7 +11,7 @@ class ChoiceIntentBase(BaseModel):
     voyage_id: int = Field(..., ge=1)
     slider_value: float = Field(..., ge=0.0, le=1.0)
     delta_pct_from_standard: float = Field(..., ge=-100.0, le=100.0)
-    selected_speed_kn: Optional[float] = Field(None, ge=0.0)
+    selected_speed_kn: Optional[float] = Field(None, gt=0.0, description="Speed in knots; must be positive if provided")
 
 
 class ChoiceIntentCreate(ChoiceIntentBase):
