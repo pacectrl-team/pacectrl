@@ -212,3 +212,16 @@ export type AuditLogsResponse = {
   offset: number
   items: AuditLogEntry[]
 }
+
+export type VoyageCreationRule = {
+  id: number
+  operator_id: number
+  name: string
+  pattern: string
+  route_id: number
+  ship_id: number
+  widget_config_id: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
