@@ -764,7 +764,7 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
         <DialogContent>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
             {/* Left side: Rule Form */}
-            <Grid item xs={12} md={6} component="div">
+            <Grid item xs={12} md={6}>
               <Stack spacing={2.5}>
                 <TextField
                   label="Rule Name"
@@ -885,7 +885,7 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
             </Grid>
 
             {/* Right side: Testing Ground */}
-            <Grid item xs={12} md={6} component="div">
+            <Grid item xs={12} md={6}>
               <Box
                 sx={{
                   bgcolor: '#f5f5f5',
