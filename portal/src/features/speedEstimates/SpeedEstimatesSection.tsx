@@ -20,6 +20,7 @@ import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 import type {
   AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
@@ -80,6 +81,7 @@ const SPEED_ESTIMATES_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/'
 
 function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionProps) {
+  const { showNotification } = useNotification()
   const [routeId, setRouteId] = useState('')
   const [shipId, setShipId] = useState('')
 
@@ -333,8 +335,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       })
 
       setSuccess('Speed estimates saved successfully.')
+      showNotification('Speed estimates saved successfully!')
     } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.'
+      setError(msg)
+      showNotification(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -430,8 +435,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       closeEditModal()
       setSuccess('Speed estimates updated successfully.')
+      showNotification('Speed estimates updated successfully!')
     } catch (err) {
-      setEditError(err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to save speed estimates. Please try again.'
+      setEditError(msg)
+      showNotification(msg, 'error')
     } finally {
       setEditLoading(false)
     }

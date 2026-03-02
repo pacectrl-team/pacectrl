@@ -37,6 +37,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type VoyagesSectionProps = {
   token: string
@@ -50,6 +51,7 @@ const WIDGET_CONFIGS_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 
 function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
+  const { showNotification } = useNotification()
   const [voyages, setVoyages] = useState<VoyageSummary[]>([])
   const [voyagesLoading, setVoyagesLoading] = useState(false)
   const [voyagesError, setVoyagesError] = useState('')
@@ -239,8 +241,11 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setCreateVoyageStatus('planned')
 
       await fetchVoyages()
+      showNotification('Voyage created successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please check the details and try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -280,8 +285,11 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setDialogOpen(false)
       setSelectedVoyage(null)
       await fetchVoyages()
+      showNotification('Voyage deleted successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to delete voyage. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete voyage. Please try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     } finally {
       setDeleteLoading(false)
     }
@@ -350,8 +358,11 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setDialogOpen(false)
       setSelectedVoyage(null)
       await fetchVoyages()
+      showNotification('Voyage updated successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     }
   }
 

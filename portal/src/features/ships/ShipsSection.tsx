@@ -14,6 +14,7 @@ import TagRoundedIcon from '@mui/icons-material/TagRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { ShipSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type ShipsSectionProps = {
   token: string
@@ -22,6 +23,7 @@ type ShipsSectionProps = {
 const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 
 function ShipsSection({ token }: ShipsSectionProps) {
+  const { showNotification } = useNotification()
   const [ships, setShips] = useState<ShipSummary[]>([])
   const [shipsLoading, setShipsLoading] = useState(false)
   const [shipsError, setShipsError] = useState('')
@@ -93,8 +95,11 @@ function ShipsSection({ token }: ShipsSectionProps) {
       setCreateName('')
       setCreateImoNumber('')
       await fetchShips()
+      showNotification('Ship created successfully!')
     } catch (err) {
-      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to create ship. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create ship. Please check the details and try again.'
+      setShipsError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -133,8 +138,11 @@ function ShipsSection({ token }: ShipsSectionProps) {
       }
 
       await fetchShips()
+      showNotification('Ship updated successfully!')
     } catch (err) {
-      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to update ship. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update ship. Please try again.'
+      setShipsError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -157,8 +165,11 @@ function ShipsSection({ token }: ShipsSectionProps) {
       setEditName('')
       setEditImoNumber('')
       await fetchShips()
+      showNotification('Ship deleted successfully!')
     } catch (err) {
-      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to delete ship. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete ship. Please try again.'
+      setShipsError(msg)
+      showNotification(msg, 'error')
     }
   }
 

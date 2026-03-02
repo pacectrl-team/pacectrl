@@ -19,6 +19,7 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { RouteSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type RoutesSectionProps = {
   token: string
@@ -27,6 +28,7 @@ type RoutesSectionProps = {
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
 
 function RoutesSection({ token }: RoutesSectionProps) {
+  const { showNotification } = useNotification()
   const [routes, setRoutes] = useState<RouteSummary[]>([])
   const [routesLoading, setRoutesLoading] = useState(false)
   const [routesError, setRoutesError] = useState('')
@@ -139,8 +141,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateIsActive(true)
 
       await fetchRoutes()
+      showNotification('Route created successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -205,8 +210,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
       }
 
       await fetchRoutes()
+      showNotification('Route updated successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -235,8 +243,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditIsActive(true)
 
       await fetchRoutes()
+      showNotification('Route deleted successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 

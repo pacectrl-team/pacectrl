@@ -30,6 +30,7 @@ import VisibilityIcon from '@mui/icons-material/VisibilityRounded'
 import AddIcon from '@mui/icons-material/AddRounded'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type WidgetsSectionProps = {
   token: string
@@ -374,6 +375,7 @@ const fieldInputSx = {
 /* ── Main Section ──────────────────────────────────── */
 
 function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
+  const { showNotification } = useNotification()
   const [configs, setConfigs] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -516,8 +518,11 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       await fetchConfigs()
       setSelectedId(created.id)
       populateFromConfig(created)
+      showNotification('Widget config created successfully!')
     } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to create widget config.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create widget config.'
+      setError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -532,8 +537,11 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       })
       if (!response.ok) throw new Error('Update failed')
       await fetchConfigs()
+      showNotification('Widget config updated successfully!')
     } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to update widget config.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update widget config.'
+      setError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -549,8 +557,11 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
       setSelectedId('')
       resetToDefaults()
       await fetchConfigs()
+      showNotification('Widget config deleted successfully!')
     } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to delete widget config.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete widget config.'
+      setError(msg)
+      showNotification(msg, 'error')
     }
   }
 
