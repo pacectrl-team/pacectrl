@@ -26,7 +26,6 @@ import {
   Divider,
   Alert,
   AlertTitle,
-  Grid,
   List,
   ListItem,
   ListItemText,
@@ -762,9 +761,9 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
           </Stack>
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 0.5 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mt: 1 }}>
             {/* Left side: Rule Form */}
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: 1 }}>
               <Stack spacing={2.5}>
                 <TextField
                   label="Rule Name"
@@ -882,10 +881,10 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                   </>
                 )}
               </Stack>
-            </Grid>
+            </Box>
 
             {/* Right side: Testing Ground */}
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: 1 }}>
               <Box
                 sx={{
                   bgcolor: '#f5f5f5',
@@ -941,8 +940,8 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                   </Alert>
                 )}
               </Box>
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
 
           {rulesError && (
             <Alert severity="error" sx={{ mt: 2 }} onClose={() => setRulesError('')}>
