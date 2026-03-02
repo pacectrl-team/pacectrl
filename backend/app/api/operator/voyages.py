@@ -224,6 +224,10 @@ def list_voyages(
         None,
         description="Only return voyages departing on or before this date (YYYY-MM-DD)",
     ),
+    voyage_creation_rule_id: Optional[int] = Query(
+        None,
+        description="Filter voyages by the creation rule used to generate them",
+    ),
 ):
     """List voyages for the current operator, with optional filters."""
     query = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id)
@@ -234,6 +238,10 @@ def list_voyages(
         query = query.filter(Voyage.departure_date >= departure_date_from)
     if departure_date_to is not None:
         query = query.filter(Voyage.departure_date <= departure_date_to)
+    if voyage_creation_rule_id is not None:
+        # Filter to only voyages created by the specified rule.
+        # If the rule ID doesn't belong to this operator, the result is simply empty.
+        query = query.filter(Voyage.voyage_creation_rule_id == voyage_creation_rule_id)
 
     voyages = query.order_by(Voyage.departure_date.asc()).all()
     return _attach_intent_counts(db, voyages)
