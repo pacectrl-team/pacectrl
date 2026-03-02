@@ -189,6 +189,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       return
     }
 
+    // validate date order: departure should not be after arrival
+    if (
+      createVoyageDepartureDate &&
+      createVoyageArrivalDate &&
+      createVoyageDepartureDate > createVoyageArrivalDate
+    ) {
+      setVoyagesError('Departure date cannot be after arrival date.')
+      return
+    }
+
     try {
       const body: {
         operator_id?: number
@@ -298,6 +308,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const handleUpdateVoyage = async () => {
     if (!token || !selectedVoyage) return
 
+    // if both dates are being edited, ensure they stay in logical order
+    if (
+      editVoyageDepartureDate &&
+      editVoyageArrivalDate &&
+      editVoyageDepartureDate > editVoyageArrivalDate
+    ) {
+      setVoyagesError('Departure date cannot be after arrival date.')
+      return
+    }
+
     const body: {
       external_trip_id?: string
       widget_config_id?: number
@@ -307,7 +327,6 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       arrival_date?: string
       status?: string
     } = {}
-
     if (
       editVoyageExternalTripId &&
       editVoyageExternalTripId !== selectedVoyage.external_trip_id
