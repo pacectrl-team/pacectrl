@@ -13,6 +13,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -196,6 +197,9 @@ function OverviewSection({ token, onNavigate }: OverviewSectionProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc')
+  const [orderBy, setOrderBy] = useState<string>('departure_datetime')
+
   useEffect(() => {
     if (!token) return
 
@@ -238,6 +242,23 @@ function OverviewSection({ token, onNavigate }: OverviewSectionProps) {
 
     void fetchData()
   }, [token])
+
+  const handleSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc'
+    setOrder(isAsc ? 'desc' : 'asc')
+    setOrderBy(property)
+  }
+
+  const sortedVoyages = data?.voyages ? [...data.voyages].sort((a, b) => {
+    const valueA = a[orderBy as keyof typeof a]
+    const valueB = b[orderBy as keyof typeof b]
+
+    if (valueA === valueB) return 0
+    if (valueA === null || valueA === undefined) return 1
+    if (valueB === null || valueB === undefined) return -1
+
+    return (valueA < valueB ? -1 : 1) * (order === 'desc' ? -1 : 1)
+  }) : []
 
   /* ── Confirmed-choices-per-day sparkline ── */
   const maxDayCount = Math.max(1, ...(data?.confirmed_choices_per_day?.map((d) => d.count) ?? [1]))
@@ -761,10 +782,22 @@ function OverviewSection({ token, onNavigate }: OverviewSectionProps) {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    {['Trip ID', 'Status', 'Route', 'Ship', 'Departure', 'Arrival', 'Intents', 'Choices', 'Avg Δ%', 'Avg Slider'].map((h, i) => (
+                    {[
+                      { id: 'external_trip_id', label: 'Trip ID', align: 'left' },
+                      { id: 'status', label: 'Status', align: 'left' },
+                      { id: 'route_name', label: 'Route', align: 'left' },
+                      { id: 'ship_name', label: 'Ship', align: 'left' },
+                      { id: 'departure_datetime', label: 'Departure', align: 'left' },
+                      { id: 'arrival_datetime', label: 'Arrival', align: 'left' },
+                      { id: 'total_intents', label: 'Intents', align: 'right' },
+                      { id: 'confirmed_choices_count', label: 'Choices', align: 'right' },
+                      { id: 'avg_delta_pct', label: 'Avg Δ%', align: 'right' },
+                      { id: 'avg_slider_value', label: 'Avg Slider', align: 'right' },
+                    ].map((h) => (
                       <TableCell
-                        key={h}
-                        align={i >= 6 ? 'right' : 'left'}
+                        key={h.id}
+                        // @ts-expect-error valid align
+                        align={h.align}
                         sx={{
                           fontWeight: 700, fontSize: 11,
                           textTransform: 'uppercase', letterSpacing: 0.8,
@@ -775,13 +808,23 @@ function OverviewSection({ token, onNavigate }: OverviewSectionProps) {
                           py: 1.5,
                         }}
                       >
-                        {h}
+                        <TableSortLabel
+                          active={orderBy === h.id}
+                          direction={orderBy === h.id ? order : 'asc'}
+                          onClick={() => handleSort(h.id)}
+                          sx={{
+                            '&.Mui-active': { color: 'text.primary' },
+                            '&:hover': { color: 'text.primary' },
+                          }}
+                        >
+                          {h.label}
+                        </TableSortLabel>
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.voyages.map((v, idx) => (
+                  {sortedVoyages.map((v, idx) => (
                     <TableRow
                       key={v.voyage_id}
                       hover
