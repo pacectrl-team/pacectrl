@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import './index.css'
 import App from './App.tsx'
+import { NotificationProvider } from './context/NotificationContext'
 
 const container = document.getElementById('root')
 if (!container) {
@@ -111,7 +112,9 @@ root.render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <NotificationProvider>
+        <App />
+      </NotificationProvider>
     </ThemeProvider>
   </StrictMode>,
 )

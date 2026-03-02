@@ -6,11 +6,13 @@ import WidgetsIcon from '@mui/icons-material/WidgetsRounded'
 
 type HomePageProps = {
   onNavigateToLogin: () => void
+  onNavigateToAbout: () => void
 }
 
-function HomePage({ onNavigateToLogin }: HomePageProps) {
+function HomePage({ onNavigateToLogin, onNavigateToAbout }: HomePageProps) {
   return (
-    <Box className="hero-section">
+    <>
+      <Box className="hero-section">
       <Box className="hero-overlay" />
       <Container maxWidth="md" className="hero-content">
         <Stack spacing={3}>
@@ -85,7 +87,7 @@ function HomePage({ onNavigateToLogin }: HomePageProps) {
             <Button
               variant="outlined"
               size="large"
-              href="#about"
+              onClick={onNavigateToAbout}
               sx={{
                 borderColor: 'rgba(255,255,255,0.3)',
                 color: '#fff',
@@ -164,7 +166,8 @@ function HomePage({ onNavigateToLogin }: HomePageProps) {
         </Stack>
       </Container>
     </Box>
-  )
+  </>
+)
 }
 
 export default HomePage

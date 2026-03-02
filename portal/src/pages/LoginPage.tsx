@@ -4,13 +4,14 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
 type LoginPageProps = {
   onLoginSuccess: (token: string, operatorId: number | null) => void
+  onNavigateToAbout: () => void
 }
 
 const LOGIN_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/auth/login'
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
 
-function LoginPage({ onLoginSuccess }: LoginPageProps) {
+function LoginPage({ onLoginSuccess, onNavigateToAbout }: LoginPageProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -158,7 +159,21 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               >
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
-            </Stack>
+              <Button
+                onClick={onNavigateToAbout}
+                sx={{
+                  textTransform: 'none',
+                  color: 'text.secondary',
+                  fontSize: 14,
+                  '&:hover': {
+                    background: 'transparent',
+                    color: 'primary.main',
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                About PaceCtrl
+              </Button>            </Stack>
           </Box>
         </Paper>
       </Container>

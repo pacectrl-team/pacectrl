@@ -19,6 +19,7 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { RouteSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type RoutesSectionProps = {
   token: string
@@ -27,6 +28,7 @@ type RoutesSectionProps = {
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
 
 function RoutesSection({ token }: RoutesSectionProps) {
+  const { showNotification } = useNotification()
   const [routes, setRoutes] = useState<RouteSummary[]>([])
   const [routesLoading, setRoutesLoading] = useState(false)
   const [routesError, setRoutesError] = useState('')
@@ -36,6 +38,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [createArrivalPort, setCreateArrivalPort] = useState('')
   const [createDepartureTime, setCreateDepartureTime] = useState('')
   const [createArrivalTime, setCreateArrivalTime] = useState('')
+  const [createDurationNights, setCreateDurationNights] = useState('')
   const [createIsActive, setCreateIsActive] = useState(true)
 
   const [selectedRoute, setSelectedRoute] = useState<RouteSummary | null>(null)
@@ -44,6 +47,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [editArrivalPort, setEditArrivalPort] = useState('')
   const [editDepartureTime, setEditDepartureTime] = useState('')
   const [editArrivalTime, setEditArrivalTime] = useState('')
+  const [editDurationNights, setEditDurationNights] = useState('')
   const [editIsActive, setEditIsActive] = useState(true)
 
   const fetchRoutes = async () => {
@@ -91,12 +95,19 @@ function RoutesSection({ token }: RoutesSectionProps) {
     }
 
     try {
+      const durationNightsNum = Number(createDurationNights)
+      if (createDurationNights === '' || !Number.isFinite(durationNightsNum) || durationNightsNum < 0) {
+        setRoutesError('Duration (nights) must be a non-negative number.')
+        return
+      }
+
       const body: {
         name: string
         departure_port: string
         arrival_port: string
         departure_time: string
         arrival_time: string
+        duration_nights: number
         is_active: boolean
       } = {
         name: createName,
@@ -104,6 +115,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
         arrival_port: createArrivalPort,
         departure_time: createDepartureTime,
         arrival_time: createArrivalTime,
+        duration_nights: durationNightsNum,
         is_active: createIsActive,
       }
 
@@ -125,11 +137,15 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateArrivalPort('')
       setCreateDepartureTime('')
       setCreateArrivalTime('')
+      setCreateDurationNights('')
       setCreateIsActive(true)
 
       await fetchRoutes()
+      showNotification('Route created successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -140,11 +156,18 @@ function RoutesSection({ token }: RoutesSectionProps) {
     setEditArrivalPort(route.arrival_port)
     setEditDepartureTime(extractTimeForInput(route.departure_time))
     setEditArrivalTime(extractTimeForInput(route.arrival_time))
+    setEditDurationNights(String(route.duration_nights ?? ''))
     setEditIsActive(route.is_active)
   }
 
   const handleUpdateRoute = async () => {
     if (!token || !selectedRoute) return
+
+    const editDurationNightsNum = Number(editDurationNights)
+    if (editDurationNights !== '' && (!Number.isFinite(editDurationNightsNum) || editDurationNightsNum < 0)) {
+      setRoutesError('Duration (nights) must be a non-negative number.')
+      return
+    }
 
     const body: {
       name?: string
@@ -152,6 +175,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
       arrival_port?: string
       departure_time?: string
       arrival_time?: string
+      duration_nights?: number
       is_active?: boolean
     } = {}
 
@@ -164,6 +188,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
       body.departure_time = editDepartureTime
     if (editArrivalTime && editArrivalTime !== selectedRoute.arrival_time)
       body.arrival_time = editArrivalTime
+    if (editDurationNights !== '' && editDurationNightsNum !== selectedRoute.duration_nights)
+      body.duration_nights = editDurationNightsNum
 
     if (editIsActive !== selectedRoute.is_active) body.is_active = editIsActive
 
@@ -184,8 +210,11 @@ function RoutesSection({ token }: RoutesSectionProps) {
       }
 
       await fetchRoutes()
+      showNotification('Route updated successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -210,11 +239,15 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditArrivalPort('')
       setEditDepartureTime('')
       setEditArrivalTime('')
+      setEditDurationNights('')
       setEditIsActive(true)
 
       await fetchRoutes()
+      showNotification('Route deleted successfully!')
     } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.'
+      setRoutesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -332,6 +365,16 @@ function RoutesSection({ token }: RoutesSectionProps) {
                   required
                   InputLabelProps={{ shrink: true }}
                 />
+                <TextField
+                  label="Duration (nights)"
+                  type="number"
+                  size="small"
+                  value={createDurationNights}
+                  onChange={(event) => setCreateDurationNights(event.target.value)}
+                  fullWidth
+                  required
+                  inputProps={{ min: 0 }}
+                />
               </Stack>
             </CardContent>
           </Card>
@@ -414,6 +457,14 @@ function RoutesSection({ token }: RoutesSectionProps) {
                             variant="outlined"
                             sx={{ bgcolor: '#fff8e1', borderColor: '#ffcc80', height: 24, fontSize: '0.8rem' }}
                           />
+                          {route.duration_nights != null && (
+                            <Chip
+                              size="small"
+                              label={`${route.duration_nights} night${route.duration_nights !== 1 ? 's' : ''}`}
+                              variant="outlined"
+                              sx={{ bgcolor: '#e8f5e9', borderColor: '#a5d6a7', height: 24, fontSize: '0.8rem' }}
+                            />
+                          )}
                         </Stack>
                       </Box>
                       <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
@@ -534,6 +585,15 @@ function RoutesSection({ token }: RoutesSectionProps) {
                     onChange={(event) => setEditArrivalTime(event.target.value)}
                     fullWidth
                     InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="Duration (nights)"
+                    type="number"
+                    size="small"
+                    value={editDurationNights}
+                    onChange={(event) => setEditDurationNights(event.target.value)}
+                    fullWidth
+                    inputProps={{ min: 0 }}
                   />
                 </Stack>
               </CardContent>

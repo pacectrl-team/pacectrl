@@ -4,9 +4,10 @@ import './App.css'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import AboutPage from './pages/AboutPage'
 import { onUnauthorized } from './utils/authFetch'
 
-type View = 'home' | 'login' | 'dashboard'
+type View = 'home' | 'login' | 'dashboard' | 'about'
 
 function App() {
   const [view, setView] = useState<View>('home')
@@ -36,6 +37,8 @@ function App() {
       document.title = `${baseTitle} · Login`
     } else if (view === 'dashboard') {
       document.title = `${baseTitle} · Dashboard`
+    } else if (view === 'about') {
+      document.title = `${baseTitle} · About Us`
     }
   }, [view])
 
@@ -70,6 +73,10 @@ function App() {
 
   const handleLoginClick = () => {
     setView('login')
+  }
+
+  const handleAboutClick = () => {
+    setView('about')
   }
 
   // Dashboard has its own sidebar + header — no AppBar needed
@@ -142,7 +149,7 @@ function App() {
               Login
             </Button>
             <Button
-              href="#about"
+              onClick={handleAboutClick}
               sx={{
                 textTransform: 'none',
                 color: 'rgba(255,255,255,0.8)',
@@ -157,12 +164,14 @@ function App() {
       </AppBar>
 
       {view === 'home' && (
-        <HomePage onNavigateToLogin={handleLoginClick} />
+        <HomePage onNavigateToLogin={handleLoginClick} onNavigateToAbout={handleAboutClick} />
       )}
 
       {view === 'login' && (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
+        <LoginPage onLoginSuccess={handleLoginSuccess} onNavigateToAbout={handleAboutClick} />
       )}
+
+      {view === 'about' && <AboutPage />}
     </Box>
   )
 }

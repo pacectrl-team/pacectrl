@@ -15,7 +15,17 @@ import {
   Tooltip,
   Typography,
   MenuItem,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableSortLabel,
+  Paper,
+  InputAdornment,
 } from '@mui/material'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded'
 import RouteRoundedIcon from '@mui/icons-material/RouteRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
@@ -27,6 +37,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type VoyagesSectionProps = {
   token: string
@@ -40,6 +51,7 @@ const WIDGET_CONFIGS_URL =
   'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 
 function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
+  const { showNotification } = useNotification()
   const [voyages, setVoyages] = useState<VoyageSummary[]>([])
   const [voyagesLoading, setVoyagesLoading] = useState(false)
   const [voyagesError, setVoyagesError] = useState('')
@@ -63,6 +75,10 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [editVoyageDepartureDate, setEditVoyageDepartureDate] = useState('')
   const [editVoyageArrivalDate, setEditVoyageArrivalDate] = useState('')
   const [editVoyageStatus, setEditVoyageStatus] = useState('')
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc')
+  const [orderBy, setOrderBy] = useState<string>('departure_date')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -173,6 +189,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       return
     }
 
+    // validate date order: departure should not be after arrival
+    if (
+      createVoyageDepartureDate &&
+      createVoyageArrivalDate &&
+      createVoyageDepartureDate > createVoyageArrivalDate
+    ) {
+      setVoyagesError('Departure date cannot be after arrival date.')
+      return
+    }
+
     try {
       const body: {
         operator_id?: number
@@ -225,8 +251,11 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setCreateVoyageStatus('planned')
 
       await fetchVoyages()
+      showNotification('Voyage created successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please check the details and try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -266,8 +295,11 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setDialogOpen(false)
       setSelectedVoyage(null)
       await fetchVoyages()
+      showNotification('Voyage deleted successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to delete voyage. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete voyage. Please try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     } finally {
       setDeleteLoading(false)
     }
@@ -275,6 +307,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
   const handleUpdateVoyage = async () => {
     if (!token || !selectedVoyage) return
+
+    // if both dates are being edited, ensure they stay in logical order
+    if (
+      editVoyageDepartureDate &&
+      editVoyageArrivalDate &&
+      editVoyageDepartureDate > editVoyageArrivalDate
+    ) {
+      setVoyagesError('Departure date cannot be after arrival date.')
+      return
+    }
 
     const body: {
       external_trip_id?: string
@@ -285,7 +327,6 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       arrival_date?: string
       status?: string
     } = {}
-
     if (
       editVoyageExternalTripId &&
       editVoyageExternalTripId !== selectedVoyage.external_trip_id
@@ -336,10 +377,53 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setDialogOpen(false)
       setSelectedVoyage(null)
       await fetchVoyages()
+      showNotification('Voyage updated successfully!')
     } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update voyage. Please try again.'
+      setVoyagesError(msg)
+      showNotification(msg, 'error')
     }
   }
+
+  const handleSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc'
+    setOrder(isAsc ? 'desc' : 'asc')
+    setOrderBy(property)
+  }
+
+  const enrichedVoyages = voyages.map((v) => ({
+    ...v,
+    shipName: ships.find((s) => s.id === v.ship_id)?.name || '',
+    routeName: routes.find((r) => r.id === v.route_id)?.name || '',
+  }))
+
+  const filteredVoyages = enrichedVoyages.filter((v) => {
+    if (!searchTerm) return true
+    const term = searchTerm.toLowerCase()
+    return (
+      v.external_trip_id.toLowerCase().includes(term) ||
+      v.shipName.toLowerCase().includes(term) ||
+      v.routeName.toLowerCase().includes(term) ||
+      v.status.toLowerCase().includes(term) ||
+      (v.departure_date && v.departure_date.includes(term)) ||
+      (v.arrival_date && v.arrival_date.includes(term))
+    )
+  })
+
+  const sortedVoyages = [...filteredVoyages].sort((a, b) => {
+    const valueA = typeof a[orderBy as keyof typeof a] === 'string' 
+      ? (a[orderBy as keyof typeof a] as string).toLowerCase() 
+      : a[orderBy as keyof typeof a]
+    const valueB = typeof b[orderBy as keyof typeof b] === 'string'
+      ? (b[orderBy as keyof typeof b] as string).toLowerCase()
+      : b[orderBy as keyof typeof b]
+
+    if (valueA === valueB) return 0
+    if (valueA === null || valueA === undefined) return 1
+    if (valueB === null || valueB === undefined) return -1
+
+    return (valueA < valueB ? -1 : 1) * (order === 'desc' ? -1 : 1)
+  })
 
   const shipName = (id: number | null | undefined) => {
     if (!id) return null
@@ -394,8 +478,9 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                   fullWidth
                   required
                 >
-                  <MenuItem value="planned">Planned</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
+                   <MenuItem value="planned">Planned</MenuItem>
+                   <MenuItem value="completed">Completed</MenuItem>
+                   <MenuItem value="cancelled">Cancelled</MenuItem>
                 </TextField>
               </Stack>
             </CardContent>
@@ -538,88 +623,188 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
             <h2>Voyages</h2>
             <Typography variant="body2" className="subtitle">All scheduled voyages</Typography>
           </Box>
+          <TextField
+              size="small"
+              placeholder="Search voyages..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" color="disabled" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: 250 }}
+            />
         </Box>
         {voyagesLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading voyages...
           </Typography>
-        ) : voyages.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No voyages found for this operator.
-          </Typography>
         ) : (
-          <Stack spacing={1.5}>
-            {voyages.map((voyage) => {
-              const sName = shipName(voyage.ship_id)
-              const rName = routeName(voyage.route_id)
-              const isSelected = selectedVoyage?.id === voyage.id
-              return (
-                <Card
-                  key={voyage.id}
-                  variant="outlined"
-                  onClick={() => handleVoyageClick(voyage)}
-                  sx={{
-                    borderRadius: 3,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    borderColor: isSelected ? '#1976d2' : undefined,
-                    borderWidth: isSelected ? 2 : 1,
-                    bgcolor: isSelected ? '#f0f7ff' : '#fafafa',
-                    '&:hover': { borderColor: '#1976d2', bgcolor: '#f5faff', transform: 'translateY(-1px)', boxShadow: 1 },
-                  }}
-                >
-                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Box>
-                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                            {voyage.external_trip_id}
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+            <Table size="medium">
+              <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                <TableRow>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'external_trip_id'}
+                      direction={orderBy === 'external_trip_id' ? order : 'asc'}
+                      onClick={() => handleSort('external_trip_id')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Trip ID
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'status'}
+                      direction={orderBy === 'status' ? order : 'asc'}
+                      onClick={() => handleSort('status')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Status
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'shipName'}
+                      direction={orderBy === 'shipName' ? order : 'asc'}
+                      onClick={() => handleSort('shipName')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Ship
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'routeName'}
+                      direction={orderBy === 'routeName' ? order : 'asc'}
+                      onClick={() => handleSort('routeName')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Route
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'departure_date'}
+                      direction={orderBy === 'departure_date' ? order : 'asc'}
+                      onClick={() => handleSort('departure_date')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Departure
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'arrival_date'}
+                      direction={orderBy === 'arrival_date' ? order : 'asc'}
+                      onClick={() => handleSort('arrival_date')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Arrival
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell width={50} />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedVoyages.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                      <DirectionsBoatRoundedIcon sx={{ fontSize: 40, color: 'action.disabled', mb: 1 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {voyages.length === 0 ? 'No voyages found for this operator.' : 'No voyages match your search.'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedVoyages.map((voyage) => {
+                    const sName = shipName(voyage.ship_id)
+                    const rName = routeName(voyage.route_id)
+                    const isSelected = selectedVoyage?.id === voyage.id
+                    return (
+                      <TableRow
+                        key={voyage.id}
+                        hover
+                        onClick={() => handleVoyageClick(voyage)}
+                        selected={isSelected}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Typography sx={{ fontWeight: 600 }}>{voyage.external_trip_id}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                           #{voyage.id}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
                           <Chip
                             size="small"
                             icon={voyage.status === 'completed' ? <CheckCircleRoundedIcon /> : <ScheduleRoundedIcon />}
                             label={voyage.status}
                             color={voyage.status === 'completed' ? 'success' : 'info'}
                             variant="outlined"
-                            sx={{ fontWeight: 500, textTransform: 'capitalize', height: 24 }}
+                            sx={{ fontWeight: 500, textTransform: 'capitalize' }}
                           />
-                        </Stack>
-                        <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
-                          {sName && (
+                        </TableCell>
+                        <TableCell>
+                          {sName ? (
                             <Chip
                               size="small"
                               icon={<DirectionsBoatRoundedIcon />}
                               label={sName}
                               variant="outlined"
-                              sx={{ bgcolor: '#f5f0ff', borderColor: '#ce93d8', height: 24, fontSize: '0.8rem' }}
+                              sx={{ bgcolor: '#f5f0ff', borderColor: '#ce93d8', fontSize: '0.8rem' }}
                             />
+                          ) : (
+                            '—'
                           )}
-                          {rName && (
+                        </TableCell>
+                        <TableCell>
+                          {rName ? (
                             <Chip
                               size="small"
                               icon={<RouteRoundedIcon />}
                               label={rName}
                               variant="outlined"
-                              sx={{ bgcolor: '#fff8e1', borderColor: '#ffcc80', height: 24, fontSize: '0.8rem' }}
+                              sx={{ bgcolor: '#fff8e1', borderColor: '#ffcc80', fontSize: '0.8rem' }}
                             />
+                          ) : (
+                            '—'
                           )}
-                        </Stack>
-                        {(voyage.departure_date || voyage.arrival_date) && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <CalendarMonthRoundedIcon sx={{ fontSize: 15, opacity: 0.6 }} />
-                            {voyage.departure_date || '—'} → {voyage.arrival_date || '—'}
-                          </Typography>
-                        )}
-                      </Box>
-                      <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
-                        #{voyage.id}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          {voyage.departure_date ? (
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                              <span>{voyage.departure_date}</span>
+                            </Stack>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {voyage.arrival_date ? (
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                              <span>{voyage.arrival_date}</span>
+                            </Stack>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <EditRoundedIcon sx={{ color: 'action.active', fontSize: 20 }} />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Box>
 

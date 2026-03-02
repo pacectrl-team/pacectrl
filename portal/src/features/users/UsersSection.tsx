@@ -16,6 +16,7 @@ import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSetting
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import type { UserSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
+import { useNotification } from '../../context/NotificationContext'
 
 type UsersSectionProps = {
   token: string
@@ -25,6 +26,7 @@ type UsersSectionProps = {
 const USERS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/users/'
 
 function UsersSection({ token, operatorId }: UsersSectionProps) {
+  const { showNotification } = useNotification()
   const [users, setUsers] = useState<UserSummary[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState('')
@@ -107,8 +109,11 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       setCreatePassword('')
       setCreateRole('')
       await fetchUsers()
+      showNotification('User created successfully!')
     } catch (err) {
-      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to create user. Please check the details and try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create user. Please check the details and try again.'
+      setUsersError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -144,8 +149,11 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       }
 
       await fetchUsers()
+      showNotification('User updated successfully!')
     } catch (err) {
-      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to update user. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to update user. Please try again.'
+      setUsersError(msg)
+      showNotification(msg, 'error')
     }
   }
 
@@ -169,8 +177,11 @@ function UsersSection({ token, operatorId }: UsersSectionProps) {
       setEditRole('')
       setEditPassword('')
       await fetchUsers()
+      showNotification('User deleted successfully!')
     } catch (err) {
-      setUsersError(err instanceof ForbiddenError ? err.message : 'Unable to delete user. Please try again.')
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete user. Please try again.'
+      setUsersError(msg)
+      showNotification(msg, 'error')
     }
   }
 
