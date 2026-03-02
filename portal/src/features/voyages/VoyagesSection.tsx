@@ -866,6 +866,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                       >
                         <MenuItem value="planned">Planned</MenuItem>
                         <MenuItem value="completed">Completed</MenuItem>
+                        <MenuItem value="cancelled">Cancelled</MenuItem>
                       </TextField>
                     </Stack>
                   </CardContent>
