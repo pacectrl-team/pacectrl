@@ -43,7 +43,6 @@ import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
 import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
-import DirectionsBoatFilledRoundedIcon from '@mui/icons-material/DirectionsBoatFilledRounded'
 import type { VoyageCreationRule, RouteSummary, ShipSummary, WidgetConfig, VoyageSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
@@ -388,18 +387,6 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     setVoyagesExpanded(false)
   }
 
-  const hasChanges = (): boolean => {
-    if (!selectedRule) return false
-    return (
-      formName !== selectedRule.name ||
-      formPattern !== selectedRule.pattern ||
-      Number(formRouteId) !== selectedRule.route_id ||
-      Number(formShipId) !== selectedRule.ship_id ||
-      Number(formWidgetConfigId) !== selectedRule.widget_config_id ||
-      formIsActive !== selectedRule.is_active
-    )
-  }
-
   const hasImpactfulChanges = (): boolean => {
     if (!selectedRule) return false
     return (
@@ -610,21 +597,6 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     }
   }
 
-  const getRouteName = (routeId: number) => {
-    const route = routes.find((r) => r.id === routeId)
-    return route ? route.name : `Route #${routeId}`
-  }
-
-  const getShipName = (shipId: number) => {
-    const ship = ships.find((s) => s.id === shipId)
-    return ship ? ship.name : `Ship #${shipId}`
-  }
-
-  const getWidgetConfigName = (widgetConfigId: number) => {
-    const config = widgetConfigs.find((w) => w.id === widgetConfigId)
-    return config ? config.name : `Widget #${widgetConfigId}`
-  }
-
   return (
     <Stack spacing={3}>
       {/* Header with Create Button and Search */}
@@ -792,7 +764,7 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
         <DialogContent>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
             {/* Left side: Rule Form */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6} component="div">
               <Stack spacing={2.5}>
                 <TextField
                   label="Rule Name"
@@ -913,7 +885,7 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
             </Grid>
 
             {/* Right side: Testing Ground */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6} component="div">
               <Box
                 sx={{
                   bgcolor: '#f5f5f5',
