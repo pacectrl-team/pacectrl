@@ -9,6 +9,7 @@ import RouteIcon from '@mui/icons-material/RouteRounded'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import WidgetsIcon from '@mui/icons-material/WidgetsRounded'
 import ListAltIcon from '@mui/icons-material/ListAltRounded'
+import RuleIcon from '@mui/icons-material/RuleRounded'
 
 import UsersSection from '../features/users/UsersSection'
 import VoyagesSection from '../features/voyages/VoyagesSection'
@@ -19,6 +20,7 @@ import SpeedEstimatesSection from '../features/speedEstimates/SpeedEstimatesSect
 import WidgetsSection from '../features/widgets/WidgetsSection'
 import OperatorSection from '../features/operators/OperatorSection'
 import ApiLogsSection from '../features/apiLogs/ApiLogsSection'
+import VoyageRulesSection from '../features/voyageRules/VoyageRulesSection'
 import { authFetch } from '../utils/authFetch'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
@@ -32,6 +34,7 @@ export type DashboardSection =
   | 'routes'
   | 'speed-estimates'
   | 'widgets'
+  | 'voyage-rules'
   | 'api-logs'
 
 export type DashboardPageProps = {
@@ -49,6 +52,7 @@ const sectionTitles: Record<DashboardSection, string> = {
   routes: 'Routes',
   'speed-estimates': 'Speed Estimates',
   widgets: 'Widgets',
+  'voyage-rules': 'Voyage Rules',
   'api-logs': 'API Logs',
 }
 
@@ -70,6 +74,7 @@ const mainNav: NavItem[] = [
 const mgmtNav: NavItem[] = [
   { key: 'users', label: 'Users', icon: <PeopleIcon /> },
   { key: 'operators', label: 'Operator', icon: <BusinessIcon /> },
+  { key: 'voyage-rules', label: 'Voyage Rules', icon: <RuleIcon /> },
   { key: 'api-logs', label: 'API Logs', icon: <ListAltIcon /> },
 ]
 
@@ -191,6 +196,10 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
 
             {activeSection === 'widgets' && (
               <WidgetsSection token={token} operatorId={operatorId} />
+            )}
+
+            {activeSection === 'voyage-rules' && (
+              <VoyageRulesSection token={token} />
             )}
 
             {activeSection === 'api-logs' && (
