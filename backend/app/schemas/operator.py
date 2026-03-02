@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class OperatorBase(BaseModel):
@@ -10,12 +10,6 @@ class OperatorBase(BaseModel):
     name: str
     public_key: Optional[str] = None
     webhook_secret: Optional[str] = None
-
-
-class OperatorCreate(BaseModel):
-    """Payload for creating a new operator."""
-
-    name: str = Field(..., min_length=1, max_length=255)
 
 
 class Operator(OperatorBase):
