@@ -1,9 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   Stack,
   Switch,
@@ -15,17 +13,38 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableSortLabel,
+  Paper,
+  InputAdornment,
+  IconButton,
+  Divider,
+  Alert,
+  AlertTitle,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Collapse,
 } from '@mui/material'
-import RuleRoundedIcon from '@mui/icons-material/RuleRounded'
-import PatternRoundedIcon from '@mui/icons-material/PatternRounded'
-import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded'
-import RouteRoundedIcon from '@mui/icons-material/RouteRounded'
-import WidgetsRoundedIcon from '@mui/icons-material/WidgetsRounded'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
-import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
-import type { VoyageCreationRule, RouteSummary, ShipSummary, WidgetConfig } from '../../types/api'
+import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
+import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
+import DirectionsBoatFilledRoundedIcon from '@mui/icons-material/DirectionsBoatFilledRounded'
+import type { VoyageCreationRule, RouteSummary, ShipSummary, WidgetConfig, VoyageSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
 
@@ -37,6 +56,7 @@ const RULES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/vo
 const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
 const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
 const WIDGET_CONFIGS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
+const VOYAGES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/'
 
 // Helper function to format API error messages
 function formatErrorMessage(errorDetail: unknown, fallback: string): string {
@@ -45,7 +65,6 @@ function formatErrorMessage(errorDetail: unknown, fallback: string): string {
   }
   
   if (Array.isArray(errorDetail)) {
-    // Handle FastAPI validation errors
     return errorDetail
       .map((err) => {
         if (typeof err === 'string') return err
@@ -61,7 +80,6 @@ function formatErrorMessage(errorDetail: unknown, fallback: string): string {
   }
   
   if (errorDetail && typeof errorDetail === 'object') {
-    // Try to extract message from object
     const detail = (errorDetail as any).detail
     if (detail) {
       return formatErrorMessage(detail, fallback)
@@ -75,6 +93,53 @@ function formatErrorMessage(errorDetail: unknown, fallback: string): string {
   return fallback
 }
 
+// Helper function to compile and test a pattern against a trip ID
+function testPattern(pattern: string, tripId: string): { success: boolean; departureDate?: string; error?: string } {
+  try {
+    // Escape special regex characters except our tokens
+    let regexPattern = pattern
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\{YYYY\\\}/g, '(?<year>\\d{4})')
+      .replace(/\\\{MM\\\}/g, '(?<month>\\d{2})')
+      .replace(/\\\{DD\\\}/g, '(?<day>\\d{2})')
+      .replace(/\\\{\\\*\\\}/g, '[^-/_.]*')
+
+    regexPattern = `^${regexPattern}$`
+    
+    const regex = new RegExp(regexPattern)
+    const match = tripId.match(regex)
+    
+    if (!match || !match.groups) {
+      return { success: false, error: 'Pattern does not match trip ID' }
+    }
+    
+    const { year, month, day } = match.groups
+    
+    if (!year || !month || !day) {
+      return { success: false, error: 'Pattern matched but date components missing' }
+    }
+    
+    const dateStr = `${year}-${month}-${day}`
+    const date = new Date(dateStr)
+    
+    if (isNaN(date.getTime())) {
+      return { success: false, error: `Invalid date extracted: ${dateStr}` }
+    }
+    
+    if (
+      date.getFullYear() !== parseInt(year) ||
+      date.getMonth() + 1 !== parseInt(month) ||
+      date.getDate() !== parseInt(day)
+    ) {
+      return { success: false, error: `Invalid date: ${dateStr}` }
+    }
+    
+    return { success: true, departureDate: dateStr }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Invalid pattern' }
+  }
+}
+
 function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
   const { showNotification } = useNotification()
   const [rules, setRules] = useState<VoyageCreationRule[]>([])
@@ -84,23 +149,37 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
   const [rulesLoading, setRulesLoading] = useState(false)
   const [rulesError, setRulesError] = useState('')
 
-  const [createName, setCreateName] = useState('')
-  const [createPattern, setCreatePattern] = useState('')
-  const [createRouteId, setCreateRouteId] = useState('')
-  const [createShipId, setCreateShipId] = useState('')
-  const [createWidgetConfigId, setCreateWidgetConfigId] = useState('')
-  const [createIsActive, setCreateIsActive] = useState(true)
-
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [selectedRule, setSelectedRule] = useState<VoyageCreationRule | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editPattern, setEditPattern] = useState('')
-  const [editRouteId, setEditRouteId] = useState('')
-  const [editShipId, setEditShipId] = useState('')
-  const [editWidgetConfigId, setEditWidgetConfigId] = useState('')
-  const [editIsActive, setEditIsActive] = useState(true)
 
+  // Form fields
+  const [formName, setFormName] = useState('')
+  const [formPattern, setFormPattern] = useState('')
+  const [formRouteId, setFormRouteId] = useState('')
+  const [formShipId, setFormShipId] = useState('')
+  const [formWidgetConfigId, setFormWidgetConfigId] = useState('')
+  const [formIsActive, setFormIsActive] = useState(true)
+
+  // Testing ground
+  const [testTripId, setTestTripId] = useState('')
+  const [testResult, setTestResult] = useState<{ success: boolean; departureDate?: string; error?: string } | null>(null)
+
+  // Apply dialog
   const [applyDialogOpen, setApplyDialogOpen] = useState(false)
   const [applyFromDate, setApplyFromDate] = useState('')
+  const [pendingChanges, setPendingChanges] = useState(false)
+
+  // Voyages for rule
+  const [ruleVoyages, setRuleVoyages] = useState<VoyageSummary[]>([])
+  const [voyagesExpanded, setVoyagesExpanded] = useState(false)
+  const [voyagesLoading, setVoyagesLoading] = useState(false)
+
+  // Search and sort
+  const [searchTerm, setSearchTerm] = useState('')
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc')
+  const [orderBy, setOrderBy] = useState<string>('name')
 
   const fetchRules = async () => {
     if (!token) return
@@ -190,6 +269,29 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     }
   }
 
+  const fetchVoyagesForRule = async (ruleId: number) => {
+    if (!token) return
+
+    setVoyagesLoading(true)
+    try {
+      const response = await authFetch(`${VOYAGES_URL}?voyage_creation_rule_id=${ruleId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = (await response.json()) as VoyageSummary[]
+        setRuleVoyages(data)
+      }
+    } catch {
+      // Fail silently
+    } finally {
+      setVoyagesLoading(false)
+    }
+  }
+
   useEffect(() => {
     void fetchRules()
     void fetchRoutes()
@@ -197,9 +299,127 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     void fetchWidgetConfigs()
   }, [token])
 
-  const handleCreateRule = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  useEffect(() => {
+    if (formPattern && testTripId) {
+      const result = testPattern(formPattern, testTripId)
+      setTestResult(result)
+    } else {
+      setTestResult(null)
+    }
+  }, [formPattern, testTripId])
 
+  const handleSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc'
+    setOrder(isAsc ? 'desc' : 'asc')
+    setOrderBy(property)
+  }
+
+  const enrichedRules = rules.map((r) => ({
+    ...r,
+    routeName: routes.find((route) => route.id === r.route_id)?.name || '',
+    shipName: ships.find((ship) => ship.id === r.ship_id)?.name || '',
+    widgetConfigName: widgetConfigs.find((w) => w.id === r.widget_config_id)?.name || '',
+  }))
+
+  const filteredRules = enrichedRules.filter((r) => {
+    if (!searchTerm) return true
+    const term = searchTerm.toLowerCase()
+    return (
+      r.name.toLowerCase().includes(term) ||
+      r.pattern.toLowerCase().includes(term) ||
+      r.routeName.toLowerCase().includes(term) ||
+      r.shipName.toLowerCase().includes(term) ||
+      r.widgetConfigName.toLowerCase().includes(term)
+    )
+  })
+
+  const sortedRules = [...filteredRules].sort((a, b) => {
+    const valueA = typeof a[orderBy as keyof typeof a] === 'string'
+      ? (a[orderBy as keyof typeof a] as string).toLowerCase()
+      : a[orderBy as keyof typeof a]
+    const valueB = typeof b[orderBy as keyof typeof b] === 'string'
+      ? (b[orderBy as keyof typeof b] as string).toLowerCase()
+      : b[orderBy as keyof typeof b]
+
+    if (valueA === valueB) return 0
+    if (valueA === null || valueA === undefined) return 1
+    if (valueB === null || valueB === undefined) return -1
+
+    return (valueA < valueB ? -1 : 1) * (order === 'desc' ? -1 : 1)
+  })
+
+  const openCreateDialog = () => {
+    setDialogMode('create')
+    setFormName('')
+    setFormPattern('')
+    setFormRouteId('')
+    setFormShipId('')
+    setFormWidgetConfigId('')
+    setFormIsActive(true)
+    setTestTripId('')
+    setTestResult(null)
+    setSelectedRule(null)
+    setRuleVoyages([])
+    setVoyagesExpanded(false)
+    setPendingChanges(false)
+    setDialogOpen(true)
+  }
+
+  const openEditDialog = (rule: VoyageCreationRule) => {
+    setDialogMode('edit')
+    setSelectedRule(rule)
+    setFormName(rule.name)
+    setFormPattern(rule.pattern)
+    setFormRouteId(String(rule.route_id))
+    setFormShipId(String(rule.ship_id))
+    setFormWidgetConfigId(String(rule.widget_config_id))
+    setFormIsActive(rule.is_active)
+    setTestTripId('')
+    setTestResult(null)
+    setPendingChanges(false)
+    setDialogOpen(true)
+    void fetchVoyagesForRule(rule.id)
+  }
+
+  const closeDialog = () => {
+    setDialogOpen(false)
+    setSelectedRule(null)
+    setRuleVoyages([])
+    setVoyagesExpanded(false)
+  }
+
+  const hasChanges = (): boolean => {
+    if (!selectedRule) return false
+    return (
+      formName !== selectedRule.name ||
+      formPattern !== selectedRule.pattern ||
+      Number(formRouteId) !== selectedRule.route_id ||
+      Number(formShipId) !== selectedRule.ship_id ||
+      Number(formWidgetConfigId) !== selectedRule.widget_config_id ||
+      formIsActive !== selectedRule.is_active
+    )
+  }
+
+  const hasImpactfulChanges = (): boolean => {
+    if (!selectedRule) return false
+    return (
+      Number(formRouteId) !== selectedRule.route_id ||
+      Number(formShipId) !== selectedRule.ship_id ||
+      Number(formWidgetConfigId) !== selectedRule.widget_config_id
+    )
+  }
+
+  const handleSave = async () => {
+    setRulesError('')
+
+    if (dialogMode === 'create') {
+      await handleCreateRule()
+    } else {
+      await handleUpdateRule()
+    }
+  }
+
+  const handleCreateRule = async () => {
     if (!token) {
       setRulesError('You must be logged in to create voyage creation rules.')
       return
@@ -207,12 +427,12 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
     try {
       const body = {
-        name: createName,
-        pattern: createPattern,
-        route_id: Number(createRouteId),
-        ship_id: Number(createShipId),
-        widget_config_id: Number(createWidgetConfigId),
-        is_active: createIsActive,
+        name: formName,
+        pattern: formPattern,
+        route_id: Number(formRouteId),
+        ship_id: Number(formShipId),
+        widget_config_id: Number(formWidgetConfigId),
+        is_active: formIsActive,
       }
 
       const response = await authFetch(RULES_URL, {
@@ -226,22 +446,13 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const errorMsg = formatErrorMessage(
-          errorData.detail,
-          'Failed to create voyage creation rule'
-        )
+        const errorMsg = formatErrorMessage(errorData.detail, 'Failed to create voyage creation rule')
         throw new Error(errorMsg)
       }
 
-      setCreateName('')
-      setCreatePattern('')
-      setCreateRouteId('')
-      setCreateShipId('')
-      setCreateWidgetConfigId('')
-      setCreateIsActive(true)
-
       await fetchRules()
       showNotification('Voyage creation rule created successfully!')
+      closeDialog()
     } catch (err) {
       const msg =
         err instanceof ForbiddenError
@@ -252,16 +463,6 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
       setRulesError(msg)
       showNotification(msg, 'error')
     }
-  }
-
-  const handleRuleClick = (rule: VoyageCreationRule) => {
-    setSelectedRule(rule)
-    setEditName(rule.name)
-    setEditPattern(rule.pattern)
-    setEditRouteId(String(rule.route_id))
-    setEditShipId(String(rule.ship_id))
-    setEditWidgetConfigId(String(rule.widget_config_id))
-    setEditIsActive(rule.is_active)
   }
 
   const handleUpdateRule = async () => {
@@ -276,15 +477,20 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
       is_active?: boolean
     } = {}
 
-    if (editName && editName !== selectedRule.name) body.name = editName
-    if (editPattern && editPattern !== selectedRule.pattern) body.pattern = editPattern
-    if (editRouteId && Number(editRouteId) !== selectedRule.route_id) body.route_id = Number(editRouteId)
-    if (editShipId && Number(editShipId) !== selectedRule.ship_id) body.ship_id = Number(editShipId)
-    if (editWidgetConfigId && Number(editWidgetConfigId) !== selectedRule.widget_config_id)
-      body.widget_config_id = Number(editWidgetConfigId)
-    if (editIsActive !== selectedRule.is_active) body.is_active = editIsActive
+    if (formName && formName !== selectedRule.name) body.name = formName
+    if (formPattern && formPattern !== selectedRule.pattern) body.pattern = formPattern
+    if (formRouteId && Number(formRouteId) !== selectedRule.route_id) body.route_id = Number(formRouteId)
+    if (formShipId && Number(formShipId) !== selectedRule.ship_id) body.ship_id = Number(formShipId)
+    if (formWidgetConfigId && Number(formWidgetConfigId) !== selectedRule.widget_config_id)
+      body.widget_config_id = Number(formWidgetConfigId)
+    if (formIsActive !== selectedRule.is_active) body.is_active = formIsActive
 
-    if (Object.keys(body).length === 0) return
+    if (Object.keys(body).length === 0) {
+      closeDialog()
+      return
+    }
+
+    const hasImpact = hasImpactfulChanges()
 
     try {
       const response = await authFetch(`${RULES_URL}${selectedRule.id}`, {
@@ -298,15 +504,18 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const errorMsg = formatErrorMessage(
-          errorData.detail,
-          'Failed to update voyage creation rule'
-        )
+        const errorMsg = formatErrorMessage(errorData.detail, 'Failed to update voyage creation rule')
         throw new Error(errorMsg)
       }
 
       await fetchRules()
       showNotification('Voyage creation rule updated successfully!')
+
+      if (hasImpact) {
+        setPendingChanges(true)
+      } else {
+        closeDialog()
+      }
     } catch (err) {
       const msg =
         err instanceof ForbiddenError
@@ -322,6 +531,10 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
   const handleDeleteRule = async () => {
     if (!token || !selectedRule) return
 
+    if (!window.confirm(`Are you sure you want to delete the rule "${selectedRule.name}"?`)) {
+      return
+    }
+
     try {
       const response = await authFetch(`${RULES_URL}${selectedRule.id}`, {
         method: 'DELETE',
@@ -332,23 +545,13 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const errorMsg = formatErrorMessage(
-          errorData.detail,
-          'Failed to delete voyage creation rule'
-        )
+        const errorMsg = formatErrorMessage(errorData.detail, 'Failed to delete voyage creation rule')
         throw new Error(errorMsg)
       }
 
-      setSelectedRule(null)
-      setEditName('')
-      setEditPattern('')
-      setEditRouteId('')
-      setEditShipId('')
-      setEditWidgetConfigId('')
-      setEditIsActive(true)
-
       await fetchRules()
       showNotification('Voyage creation rule deleted successfully!')
+      closeDialog()
     } catch (err) {
       const msg =
         err instanceof ForbiddenError
@@ -364,6 +567,7 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
   const handleOpenApplyDialog = () => {
     setApplyFromDate('')
     setApplyDialogOpen(true)
+    setPendingChanges(false)
   }
 
   const handleApplyRule = async () => {
@@ -383,15 +587,13 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const errorMsg = formatErrorMessage(
-          errorData.detail,
-          'Failed to apply voyage creation rule'
-        )
+        const errorMsg = formatErrorMessage(errorData.detail, 'Failed to apply voyage creation rule')
         throw new Error(errorMsg)
       }
 
       const result = await response.json()
       setApplyDialogOpen(false)
+      closeDialog()
       showNotification(
         `Rule applied successfully! ${result.updated_count} voyage(s) updated.`,
         result.updated_count > 0 ? 'success' : 'info'
@@ -425,90 +627,198 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
 
   return (
     <Stack spacing={3}>
-      {/* ── Create Voyage Creation Rule ── */}
-      <Box className="section-card" component="form" onSubmit={handleCreateRule} noValidate>
-        <Stack spacing={2.5}>
-          <Box className="section-header">
+      {/* Header with Create Button and Search */}
+      <Box className="section-card">
+        <Stack spacing={2}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
             <Box>
-              <h2>Create Voyage Creation Rule</h2>
+              <h2 style={{ margin: 0 }}>Voyage Creation Rules</h2>
               <Typography variant="body2" className="subtitle">
-                Define a rule to automatically create voyages from trip IDs
+                Define rules to automatically create voyages from trip IDs
               </Typography>
             </Box>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddRoundedIcon />}
+              onClick={openCreateDialog}
+              sx={{ borderRadius: 2, fontWeight: 600 }}
+            >
+              Create New Rule
+            </Button>
           </Box>
 
-          {/* Rule identity */}
-          <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                <RuleRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                  Rule Identity
-                </Typography>
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          {/* Search bar */}
+          <TextField
+            placeholder="Search by name, pattern, route, ship, or widget..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            size="small"
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon sx={{ color: 'action.active' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ maxWidth: 600 }}
+          />
+        </Stack>
+      </Box>
+
+      {rulesError && (
+        <Alert severity="error" onClose={() => setRulesError('')}>
+          {rulesError}
+        </Alert>
+      )}
+
+      {/* Rules Table */}
+      <Box className="section-card">
+        {rulesLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            Loading voyage creation rules...
+          </Typography>
+        ) : sortedRules.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {searchTerm ? 'No rules match your search.' : 'No voyage creation rules found.'}
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#fafafa' }}>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'name'}
+                      direction={orderBy === 'name' ? order : 'asc'}
+                      onClick={() => handleSort('name')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Name
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'pattern'}
+                      direction={orderBy === 'pattern' ? order : 'asc'}
+                      onClick={() => handleSort('pattern')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Pattern
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'routeName'}
+                      direction={orderBy === 'routeName' ? order : 'asc'}
+                      onClick={() => handleSort('routeName')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Route
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'shipName'}
+                      direction={orderBy === 'shipName' ? order : 'asc'}
+                      onClick={() => handleSort('shipName')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Ship
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'widgetConfigName'}
+                      direction={orderBy === 'widgetConfigName' ? order : 'asc'}
+                      onClick={() => handleSort('widgetConfigName')}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Widget Config
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    Status
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedRules.map((rule) => (
+                  <TableRow
+                    key={rule.id}
+                    hover
+                    onClick={() => openEditDialog(rule)}
+                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f5f5f5' } }}
+                  >
+                    <TableCell sx={{ fontWeight: 500 }}>{rule.name}</TableCell>
+                    <TableCell>
+                      <code style={{ fontSize: '0.85rem', color: '#7b1fa2', backgroundColor: '#f5f0ff', padding: '2px 6px', borderRadius: 4 }}>
+                        {rule.pattern}
+                      </code>
+                    </TableCell>
+                    <TableCell>{rule.routeName}</TableCell>
+                    <TableCell>{rule.shipName}</TableCell>
+                    <TableCell>{rule.widgetConfigName}</TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        size="small"
+                        icon={rule.is_active ? <CheckCircleRoundedIcon /> : <CancelRoundedIcon />}
+                        label={rule.is_active ? 'Active' : 'Inactive'}
+                        color={rule.is_active ? 'success' : 'default'}
+                        variant="outlined"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" component="div">
+              {dialogMode === 'create' ? 'Create Voyage Creation Rule' : `Edit Rule: ${selectedRule?.name}`}
+            </Typography>
+            <IconButton onClick={closeDialog} size="small">
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3} sx={{ mt: 0.5 }}>
+            {/* Left side: Rule Form */}
+            <Grid item xs={12} md={6}>
+              <Stack spacing={2.5}>
                 <TextField
-                  label="Name"
-                  variant="outlined"
+                  label="Rule Name"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
                   size="small"
-                  value={createName}
-                  onChange={(event) => setCreateName(event.target.value)}
                   fullWidth
                   required
                 />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={createIsActive}
-                      onChange={(event) => setCreateIsActive(event.target.checked)}
-                      color="success"
-                    />
-                  }
-                  label="Active"
-                  sx={{ minWidth: 100 }}
+
+                <TextField
+                  label="Pattern"
+                  value={formPattern}
+                  onChange={(e) => setFormPattern(e.target.value)}
+                  size="small"
+                  fullWidth
+                  required
+                  placeholder="e.g., HEL-TLL-{YYYY}-{MM}-{DD}"
+                  helperText="Use {YYYY}, {MM}, {DD} for date extraction, {*} for wildcards"
                 />
-              </Stack>
-            </CardContent>
-          </Card>
 
-          {/* Pattern */}
-          <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                <PatternRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
-                  Pattern
-                </Typography>
-              </Stack>
-              <TextField
-                label="Pattern"
-                variant="outlined"
-                size="small"
-                value={createPattern}
-                onChange={(event) => setCreatePattern(event.target.value)}
-                fullWidth
-                required
-                placeholder="e.g., HEL-TLL-{YYYY}-{MM}-{DD}"
-                helperText="Use {YYYY}, {MM}, {DD} for date extraction, {*} for wildcards"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Voyage defaults */}
-          <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                <DirectionsBoatRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
-                  Default Voyage Settings
-                </Typography>
-              </Stack>
-              <Stack spacing={2}>
                 <TextField
                   select
                   label="Route"
-                  value={createRouteId}
-                  onChange={(event) => setCreateRouteId(event.target.value)}
+                  value={formRouteId}
+                  onChange={(e) => setFormRouteId(e.target.value)}
                   size="small"
                   fullWidth
                   required
@@ -519,11 +829,12 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   select
                   label="Ship"
-                  value={createShipId}
-                  onChange={(event) => setCreateShipId(event.target.value)}
+                  value={formShipId}
+                  onChange={(e) => setFormShipId(e.target.value)}
                   size="small"
                   fullWidth
                   required
@@ -534,11 +845,12 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   select
                   label="Widget Config"
-                  value={createWidgetConfigId}
-                  onChange={(event) => setCreateWidgetConfigId(event.target.value)}
+                  value={formWidgetConfigId}
+                  onChange={(e) => setFormWidgetConfigId(e.target.value)}
                   size="small"
                   fullWidth
                   required
@@ -549,317 +861,182 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                     </MenuItem>
                   ))}
                 </TextField>
-              </Stack>
-            </CardContent>
-          </Card>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="success"
-            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
-          >
-            Create voyage creation rule
-          </Button>
-        </Stack>
-      </Box>
-
-      {rulesError && (
-        <Typography variant="body2" color="error">
-          {rulesError}
-        </Typography>
-      )}
-
-      {/* ── Voyage Creation Rules list ── */}
-      <Box className="section-card">
-        <Box className="section-header">
-          <Box>
-            <h2>Voyage Creation Rules</h2>
-            <Typography variant="body2" className="subtitle">
-              All configured voyage creation rules
-            </Typography>
-          </Box>
-        </Box>
-        {rulesLoading ? (
-          <Typography variant="body2" color="text.secondary">
-            Loading voyage creation rules...
-          </Typography>
-        ) : rules.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No voyage creation rules found.
-          </Typography>
-        ) : (
-          <Stack spacing={1.5}>
-            {rules.map((rule) => {
-              const isSelected = selectedRule?.id === rule.id
-              return (
-                <Card
-                  key={rule.id}
-                  variant="outlined"
-                  onClick={() => handleRuleClick(rule)}
-                  sx={{
-                    borderRadius: 3,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    borderColor: isSelected ? '#1976d2' : undefined,
-                    borderWidth: isSelected ? 2 : 1,
-                    bgcolor: isSelected ? '#f0f7ff' : '#fafafa',
-                    '&:hover': {
-                      borderColor: '#1976d2',
-                      bgcolor: '#f5faff',
-                      transform: 'translateY(-1px)',
-                      boxShadow: 1,
-                    },
-                  }}
-                >
-                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Box sx={{ flex: 1 }}>
-                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>{rule.name}</Typography>
-                          <Chip
-                            size="small"
-                            icon={rule.is_active ? <CheckCircleRoundedIcon /> : <CancelRoundedIcon />}
-                            label={rule.is_active ? 'Active' : 'Inactive'}
-                            color={rule.is_active ? 'success' : 'default'}
-                            variant="outlined"
-                            sx={{ fontWeight: 500, height: 24 }}
-                          />
-                        </Stack>
-                        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                          <Chip
-                            size="small"
-                            icon={<PatternRoundedIcon />}
-                            label={rule.pattern}
-                            variant="outlined"
-                            sx={{ bgcolor: '#f5f0ff', borderColor: '#ce93d8', height: 24, fontSize: '0.8rem' }}
-                          />
-                          <Stack direction="row" spacing={1} flexWrap="wrap">
-                            <Chip
-                              size="small"
-                              icon={<RouteRoundedIcon />}
-                              label={getRouteName(rule.route_id)}
-                              variant="outlined"
-                              sx={{
-                                bgcolor: '#e3f2fd',
-                                borderColor: '#90caf9',
-                                height: 24,
-                                fontSize: '0.75rem',
-                                mt: 0.5,
-                              }}
-                            />
-                            <Chip
-                              size="small"
-                              icon={<DirectionsBoatRoundedIcon />}
-                              label={getShipName(rule.ship_id)}
-                              variant="outlined"
-                              sx={{
-                                bgcolor: '#e8f5e9',
-                                borderColor: '#a5d6a7',
-                                height: 24,
-                                fontSize: '0.75rem',
-                                mt: 0.5,
-                              }}
-                            />
-                            <Chip
-                              size="small"
-                              icon={<WidgetsRoundedIcon />}
-                              label={getWidgetConfigName(rule.widget_config_id)}
-                              variant="outlined"
-                              sx={{
-                                bgcolor: '#fff8e1',
-                                borderColor: '#ffcc80',
-                                height: 24,
-                                fontSize: '0.75rem',
-                                mt: 0.5,
-                              }}
-                            />
-                          </Stack>
-                        </Stack>
-                      </Box>
-                      <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5 }}>
-                        #{rule.id}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </Stack>
-        )}
-      </Box>
-
-      {/* ── Edit Voyage Creation Rule ── */}
-      {selectedRule && (
-        <Box className="section-card">
-          <Box className="section-header">
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
-                <h2>Edit Voyage Creation Rule</h2>
-              </Stack>
-              <Typography variant="body2" className="subtitle">
-                Editing <strong>{selectedRule.name}</strong>
-              </Typography>
-            </Box>
-          </Box>
-
-          <Stack spacing={2}>
-            {/* Rule identity */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <RuleRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    Rule Identity
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                  <TextField
-                    label="Name"
-                    variant="outlined"
-                    size="small"
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    fullWidth
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={editIsActive}
-                        onChange={(event) => setEditIsActive(event.target.checked)}
-                        color="success"
-                      />
-                    }
-                    label="Active"
-                    sx={{ minWidth: 100 }}
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
-
-            {/* Pattern */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <PatternRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
-                    Pattern
-                  </Typography>
-                </Stack>
-                <TextField
-                  label="Pattern"
-                  variant="outlined"
-                  size="small"
-                  value={editPattern}
-                  onChange={(event) => setEditPattern(event.target.value)}
-                  fullWidth
-                  placeholder="e.g., HEL-TLL-{YYYY}-{MM}-{DD}"
-                  helperText="Use {YYYY}, {MM}, {DD} for date extraction, {*} for wildcards"
+                <FormControlLabel
+                  control={
+                    <Switch checked={formIsActive} onChange={(e) => setFormIsActive(e.target.checked)} color="success" />
+                  }
+                  label="Active"
                 />
-              </CardContent>
-            </Card>
 
-            {/* Voyage defaults */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <DirectionsBoatRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
-                    Default Voyage Settings
+                {dialogMode === 'edit' && selectedRule && (
+                  <>
+                    <Divider />
+                    <Box>
+                      <Button
+                        variant="text"
+                        color="primary"
+                        startIcon={voyagesExpanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                        onClick={() => setVoyagesExpanded(!voyagesExpanded)}
+                        sx={{ textTransform: 'none', mb: 1 }}
+                      >
+                        {voyagesExpanded ? 'Hide' : 'Show'} Voyages Created by This Rule ({ruleVoyages.length})
+                      </Button>
+                      <Collapse in={voyagesExpanded}>
+                        {voyagesLoading ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Loading voyages...
+                          </Typography>
+                        ) : ruleVoyages.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary">
+                            No voyages have been created by this rule yet.
+                          </Typography>
+                        ) : (
+                          <List dense sx={{ maxHeight: 200, overflow: 'auto', bgcolor: '#fafafa', borderRadius: 1 }}>
+                            {ruleVoyages.map((v) => (
+                              <ListItem key={v.id} sx={{ py: 0.5 }}>
+                                <ListItemText
+                                  primary={v.external_trip_id}
+                                  secondary={`${v.departure_date} • ${v.status}`}
+                                  primaryTypographyProps={{ fontSize: '0.875rem' }}
+                                  secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        )}
+                      </Collapse>
+                    </Box>
+                  </>
+                )}
+              </Stack>
+            </Grid>
+
+            {/* Right side: Testing Ground */}
+            <Grid item xs={12} md={6}>
+              <Box
+                sx={{
+                  bgcolor: '#f5f5f5',
+                  borderRadius: 2,
+                  p: 2.5,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                  <ScienceRoundedIcon sx={{ color: '#1976d2' }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Pattern Testing Ground
                   </Typography>
                 </Stack>
-                <Stack spacing={2}>
-                  <TextField
-                    select
-                    label="Route"
-                    value={editRouteId}
-                    onChange={(event) => setEditRouteId(event.target.value)}
-                    size="small"
-                    fullWidth
-                  >
-                    {routes.map((route) => (
-                      <MenuItem key={route.id} value={route.id}>
-                        {route.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select
-                    label="Ship"
-                    value={editShipId}
-                    onChange={(event) => setEditShipId(event.target.value)}
-                    size="small"
-                    fullWidth
-                  >
-                    {ships.map((ship) => (
-                      <MenuItem key={ship.id} value={ship.id}>
-                        {ship.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select
-                    label="Widget Config"
-                    value={editWidgetConfigId}
-                    onChange={(event) => setEditWidgetConfigId(event.target.value)}
-                    size="small"
-                    fullWidth
-                  >
-                    {widgetConfigs.map((config) => (
-                      <MenuItem key={config.id} value={config.id}>
-                        {config.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-              </CardContent>
-            </Card>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleUpdateRule}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, flex: 1 }}
-              >
-                Save changes
+                <TextField
+                  label="External Trip ID"
+                  value={testTripId}
+                  onChange={(e) => setTestTripId(e.target.value)}
+                  size="small"
+                  fullWidth
+                  placeholder="e.g., HEL-TLL-2026-03-15"
+                  helperText="Enter a trip ID to test if the pattern matches"
+                  sx={{ mb: 2 }}
+                />
+
+                {testResult && (
+                  <Alert
+                    severity={testResult.success ? 'success' : 'error'}
+                    icon={testResult.success ? <CheckCircleRoundedIcon /> : <ErrorRoundedIcon />}
+                    sx={{ mt: 1 }}
+                  >
+                    <AlertTitle sx={{ fontWeight: 600 }}>
+                      {testResult.success ? 'Pattern Matches!' : 'Pattern Does Not Match'}
+                    </AlertTitle>
+                    {testResult.success ? (
+                      <Typography variant="body2">
+                        Departure date extracted: <strong>{testResult.departureDate}</strong>
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2">{testResult.error}</Typography>
+                    )}
+                  </Alert>
+                )}
+
+                {!testTripId && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      Enter an external trip ID above to test if your pattern correctly extracts the departure date.
+                    </Typography>
+                  </Alert>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+
+          {rulesError && (
+            <Alert severity="error" sx={{ mt: 2 }} onClose={() => setRulesError('')}>
+              {rulesError}
+            </Alert>
+          )}
+
+          {/* Ask to apply changes alert */}
+          {pendingChanges && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              <AlertTitle>Changes Saved</AlertTitle>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                You've updated the route, ship, or widget config for this rule. Would you like to apply these changes to
+                existing voyages created by this rule?
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Button size="small" variant="contained" onClick={handleOpenApplyDialog}>
+                  Apply to Voyages
+                </Button>
+                <Button size="small" variant="outlined" onClick={closeDialog}>
+                  Skip
+                </Button>
+              </Stack>
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'space-between' }}>
+            <Box>
+              {dialogMode === 'edit' && (
+                <Button onClick={handleDeleteRule} color="error" startIcon={<DeleteRoundedIcon />}>
+                  Delete Rule
+                </Button>
+              )}
+            </Box>
+            <Box>
+              <Button onClick={closeDialog} sx={{ mr: 1 }}>
+                Cancel
               </Button>
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={handleOpenApplyDialog}
-                startIcon={<PlayArrowRoundedIcon />}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
-              >
-                Apply to voyages
+              {dialogMode === 'edit' && !pendingChanges && (
+                <Button onClick={handleOpenApplyDialog} startIcon={<PlayArrowRoundedIcon />} sx={{ mr: 1 }}>
+                  Apply to Voyages
+                </Button>
+              )}
+              <Button onClick={handleSave} variant="contained" color="primary" disabled={pendingChanges}>
+                {dialogMode === 'create' ? 'Create Rule' : 'Save Changes'}
               </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleDeleteRule}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
-              >
-                Delete rule
-              </Button>
-            </Stack>
+            </Box>
           </Stack>
-        </Box>
-      )}
+        </DialogActions>
+      </Dialog>
 
-      {/* ── Apply Rule Dialog ── */}
+      {/* Apply Rule Dialog */}
       <Dialog open={applyDialogOpen} onClose={() => setApplyDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Apply Voyage Creation Rule</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              This will update all planned voyages that were created by this rule with the current rule settings.
+              This will update all planned voyages that were created by this rule with the current rule settings (route,
+              ship, and widget config).
             </Typography>
             <TextField
               label="From Date (optional)"
               type="date"
               value={applyFromDate}
-              onChange={(event) => setApplyFromDate(event.target.value)}
+              onChange={(e) => setApplyFromDate(e.target.value)}
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
