@@ -23,7 +23,9 @@ import {
   TableCell,
   TableSortLabel,
   Paper,
+  InputAdornment,
 } from '@mui/material'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded'
 import RouteRoundedIcon from '@mui/icons-material/RouteRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
@@ -72,6 +74,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [editVoyageArrivalDate, setEditVoyageArrivalDate] = useState('')
   const [editVoyageStatus, setEditVoyageStatus] = useState('')
 
+  const [searchTerm, setSearchTerm] = useState('')
   const [order, setOrder] = useState<'asc' | 'desc'>('asc')
   const [orderBy, setOrderBy] = useState<string>('departure_date')
 
@@ -360,13 +363,30 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
 
   const enrichedVoyages = voyages.map((v) => ({
     ...v,
-    shipName: (ships.find((s) => s.id === v.ship_id)?.name || '').toLowerCase(),
-    routeName: (routes.find((r) => r.id === v.route_id)?.name || '').toLowerCase(),
+    shipName: ships.find((s) => s.id === v.ship_id)?.name || '',
+    routeName: routes.find((r) => r.id === v.route_id)?.name || '',
   }))
 
-  const sortedVoyages = [...enrichedVoyages].sort((a, b) => {
-    const valueA = a[orderBy as keyof typeof a]
-    const valueB = b[orderBy as keyof typeof b]
+  const filteredVoyages = enrichedVoyages.filter((v) => {
+    if (!searchTerm) return true
+    const term = searchTerm.toLowerCase()
+    return (
+      v.external_trip_id.toLowerCase().includes(term) ||
+      v.shipName.toLowerCase().includes(term) ||
+      v.routeName.toLowerCase().includes(term) ||
+      v.status.toLowerCase().includes(term) ||
+      (v.departure_date && v.departure_date.includes(term)) ||
+      (v.arrival_date && v.arrival_date.includes(term))
+    )
+  })
+
+  const sortedVoyages = [...filteredVoyages].sort((a, b) => {
+    const valueA = typeof a[orderBy as keyof typeof a] === 'string' 
+      ? (a[orderBy as keyof typeof a] as string).toLowerCase() 
+      : a[orderBy as keyof typeof a]
+    const valueB = typeof b[orderBy as keyof typeof b] === 'string'
+      ? (b[orderBy as keyof typeof b] as string).toLowerCase()
+      : b[orderBy as keyof typeof b]
 
     if (valueA === valueB) return 0
     if (valueA === null || valueA === undefined) return 1
@@ -573,14 +593,24 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
             <h2>Voyages</h2>
             <Typography variant="body2" className="subtitle">All scheduled voyages</Typography>
           </Box>
+          <TextField
+              size="small"
+              placeholder="Search voyages..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" color="disabled" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: 250 }}
+            />
         </Box>
         {voyagesLoading ? (
           <Typography variant="body2" color="text.secondary">
             Loading voyages...
-          </Typography>
-        ) : voyages.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No voyages found for this operator.
           </Typography>
         ) : (
           <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
@@ -651,86 +681,97 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {sortedVoyages.map((voyage) => {
-                  const sName = shipName(voyage.ship_id)
-                  const rName = routeName(voyage.route_id)
-                  const isSelected = selectedVoyage?.id === voyage.id
-                  return (
-                    <TableRow
-                      key={voyage.id}
-                      hover
-                      onClick={() => handleVoyageClick(voyage)}
-                      selected={isSelected}
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{voyage.external_trip_id}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          #{voyage.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          icon={voyage.status === 'completed' ? <CheckCircleRoundedIcon /> : <ScheduleRoundedIcon />}
-                          label={voyage.status}
-                          color={voyage.status === 'completed' ? 'success' : 'info'}
-                          variant="outlined"
-                          sx={{ fontWeight: 500, textTransform: 'capitalize' }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {sName ? (
+                {sortedVoyages.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                      <DirectionsBoatRoundedIcon sx={{ fontSize: 40, color: 'action.disabled', mb: 1 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {voyages.length === 0 ? 'No voyages found for this operator.' : 'No voyages match your search.'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedVoyages.map((voyage) => {
+                    const sName = shipName(voyage.ship_id)
+                    const rName = routeName(voyage.route_id)
+                    const isSelected = selectedVoyage?.id === voyage.id
+                    return (
+                      <TableRow
+                        key={voyage.id}
+                        hover
+                        onClick={() => handleVoyageClick(voyage)}
+                        selected={isSelected}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Typography sx={{ fontWeight: 600 }}>{voyage.external_trip_id}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                           #{voyage.id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
                           <Chip
                             size="small"
-                            icon={<DirectionsBoatRoundedIcon />}
-                            label={sName}
+                            icon={voyage.status === 'completed' ? <CheckCircleRoundedIcon /> : <ScheduleRoundedIcon />}
+                            label={voyage.status}
+                            color={voyage.status === 'completed' ? 'success' : 'info'}
                             variant="outlined"
-                            sx={{ bgcolor: '#f5f0ff', borderColor: '#ce93d8', fontSize: '0.8rem' }}
+                            sx={{ fontWeight: 500, textTransform: 'capitalize' }}
                           />
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {rName ? (
-                          <Chip
-                            size="small"
-                            icon={<RouteRoundedIcon />}
-                            label={rName}
-                            variant="outlined"
-                            sx={{ bgcolor: '#fff8e1', borderColor: '#ffcc80', fontSize: '0.8rem' }}
-                          />
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {voyage.departure_date ? (
-                          <Stack direction="row" alignItems="center" spacing={0.5}>
-                            <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            <span>{voyage.departure_date}</span>
-                          </Stack>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {voyage.arrival_date ? (
-                          <Stack direction="row" alignItems="center" spacing={0.5}>
-                            <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            <span>{voyage.arrival_date}</span>
-                          </Stack>
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <EditRoundedIcon sx={{ color: 'action.active', fontSize: 20 }} />
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                        </TableCell>
+                        <TableCell>
+                          {sName ? (
+                            <Chip
+                              size="small"
+                              icon={<DirectionsBoatRoundedIcon />}
+                              label={sName}
+                              variant="outlined"
+                              sx={{ bgcolor: '#f5f0ff', borderColor: '#ce93d8', fontSize: '0.8rem' }}
+                            />
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {rName ? (
+                            <Chip
+                              size="small"
+                              icon={<RouteRoundedIcon />}
+                              label={rName}
+                              variant="outlined"
+                              sx={{ bgcolor: '#fff8e1', borderColor: '#ffcc80', fontSize: '0.8rem' }}
+                            />
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {voyage.departure_date ? (
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                              <span>{voyage.departure_date}</span>
+                            </Stack>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {voyage.arrival_date ? (
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <CalendarMonthRoundedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                              <span>{voyage.arrival_date}</span>
+                            </Stack>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <EditRoundedIcon sx={{ color: 'action.active', fontSize: 20 }} />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
               </TableBody>
             </Table>
           </TableContainer>
