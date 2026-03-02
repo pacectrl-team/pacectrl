@@ -394,8 +394,9 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                   fullWidth
                   required
                 >
-                  <MenuItem value="planned">Planned</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
+                   <MenuItem value="planned">Planned</MenuItem>
+                   <MenuItem value="completed">Completed</MenuItem>
+                   <MenuItem value="cancelled">Cancelled</MenuItem>
                 </TextField>
               </Stack>
             </CardContent>
