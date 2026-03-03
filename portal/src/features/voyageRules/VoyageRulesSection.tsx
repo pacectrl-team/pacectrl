@@ -100,7 +100,7 @@ function testPattern(pattern: string, tripId: string): { success: boolean; depar
       .replace(/\\\{YYYY\\\}/g, '(?<year>\\d{4})')
       .replace(/\\\{MM\\\}/g, '(?<month>\\d{2})')
       .replace(/\\\{DD\\\}/g, '(?<day>\\d{2})')
-      .replace(/\\\{\\\*\\\}/g, '[^-/_.]*')
+      .replace(/\\\{\*\\\}/g, '[^-/_.]+')
 
     regexPattern = `^${regexPattern}$`
     
