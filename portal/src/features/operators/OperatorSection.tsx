@@ -91,7 +91,7 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
       )
       if (!response.ok) throw new Error('Failed to generate webhook secret')
       const data = (await response.json()) as WebhookSecretResponse
-      setGeneratedSecret(data.secret)
+      setGeneratedSecret(data.webhook_secret)
       setCopied(false)
       setSecretDialogOpen(true)
     } catch (err) {

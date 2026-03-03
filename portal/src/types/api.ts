@@ -196,7 +196,7 @@ export type OperatorSummary = {
 }
 
 export type WebhookSecretResponse = {
-  secret: string
+  webhook_secret: string
 }
 
 export type AuditLogEntry = {
