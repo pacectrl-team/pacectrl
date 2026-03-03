@@ -1,6 +1,5 @@
-import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { useEffect, useRef, useState, useMemo, type FormEvent } from 'react'
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -36,7 +35,7 @@ import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
-import TravelExploreRoundedIcon from '@mui/icons-material/TravelExploreRounded'
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded'
 import type { VoyageSummary, VoyageEnsurePreview } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
@@ -80,12 +79,9 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc')
   const [orderBy, setOrderBy] = useState<string>('departure_date')
 
-  // ── Ensure voyage from trip ID (rule-based creation) ──
-  const [ensureTripId, setEnsureTripId] = useState('')
-  const [ensurePreview, setEnsurePreview] = useState<VoyageEnsurePreview | null>(null)
-  const [ensureLoading, setEnsureLoading] = useState(false)
-  const [ensureError, setEnsureError] = useState('')
-  const [ensureConfirmLoading, setEnsureConfirmLoading] = useState(false)
+  // ── Rule preview for the Create form (debounced lookup on external trip ID) ──
+  const [createRulePreview, setCreateRulePreview] = useState<VoyageEnsurePreview | null>(null)
+  const createTripIdDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -120,6 +116,52 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   useEffect(() => {
     void fetchVoyages()
   }, [token])
+
+  /**
+   * Debounced lookup: when the admin types a trip ID in the Create form, call
+   * preview-ensure after 600 ms of inactivity. If a rule matches, surface a
+   * one-click "Import settings" chip so the form fields are filled automatically.
+   */
+  useEffect(() => {
+    // Cancel any pending lookup from the previous keystroke.
+    if (createTripIdDebounceRef.current) clearTimeout(createTripIdDebounceRef.current)
+
+    if (!createVoyageExternalTripId.trim()) {
+      setCreateRulePreview(null)
+      return
+    }
+
+    createTripIdDebounceRef.current = setTimeout(async () => {
+      if (!token) return
+      try {
+        const response = await authFetch(
+          'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/preview-ensure',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ external_trip_id: createVoyageExternalTripId.trim() }),
+          },
+        )
+        if (response.ok) {
+          const data = (await response.json()) as VoyageEnsurePreview
+          // Only offer import when a *new* voyage would be created; skip if already exists.
+          setCreateRulePreview(data.already_exists ? null : data)
+        } else {
+          // 404 means no rule matched — silently clear.
+          setCreateRulePreview(null)
+        }
+      } catch {
+        setCreateRulePreview(null)
+      }
+    }, 600)
+
+    return () => {
+      if (createTripIdDebounceRef.current) clearTimeout(createTripIdDebounceRef.current)
+    }
+  }, [createVoyageExternalTripId, token])
 
   /**
    * Set of valid ship+route pair keys derived from speed estimates in the shared context.
@@ -208,6 +250,7 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
       setCreateVoyageDepartureDate('')
       setCreateVoyageArrivalDate('')
       setCreateVoyageStatus('planned')
+      setCreateRulePreview(null)
 
       await fetchVoyages()
       showNotification('Voyage created successfully!')
@@ -351,78 +394,18 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   }
 
   /**
-   * Calls /voyages/preview-ensure to show what rule would match the given trip ID
-   * and what voyage would be created — without actually creating anything.
+   * Auto-populates the Create Voyage form fields using the matched rule preview.
+   * Called when the operator clicks the "Import settings" chip.
    */
-  const handlePreviewEnsure = async () => {
-    if (!ensureTripId.trim()) return
-    setEnsureLoading(true)
-    setEnsureError('')
-    setEnsurePreview(null)
-    try {
-      const response = await authFetch(
-        'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/preview-ensure',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ external_trip_id: ensureTripId.trim() }),
-        },
-      )
-      if (response.status === 404) {
-        setEnsureError('No active voyage creation rule matched this trip ID. Check your rules in the Voyage Rules view.')
-        return
-      }
-      if (!response.ok) {
-        throw new Error('Preview failed')
-      }
-      const data = (await response.json()) as VoyageEnsurePreview
-      setEnsurePreview(data)
-    } catch (err) {
-      setEnsureError(
-        err instanceof ForbiddenError ? err.message : 'Unable to preview. Please try again.',
-      )
-    } finally {
-      setEnsureLoading(false)
-    }
-  }
-
-  /**
-   * Calls /voyages/ensure to actually create (or return the existing) voyage
-   * for the previewed trip ID, then refreshes the voyage list.
-   */
-  const handleConfirmEnsure = async () => {
-    if (!ensureTripId.trim()) return
-    setEnsureConfirmLoading(true)
-    try {
-      const response = await authFetch(
-        'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/ensure',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ external_trip_id: ensureTripId.trim() }),
-        },
-      )
-      if (!response.ok) {
-        throw new Error('Failed to create voyage')
-      }
-      setEnsureTripId('')
-      setEnsurePreview(null)
-      setEnsureError('')
-      await fetchVoyages()
-      showNotification('Voyage created successfully!')
-    } catch (err) {
-      const msg = err instanceof ForbiddenError ? err.message : 'Unable to create voyage. Please try again.'
-      setEnsureError(msg)
-      showNotification(msg, 'error')
-    } finally {
-      setEnsureConfirmLoading(false)
-    }
+  const handleImportRuleSettings = () => {
+    if (!createRulePreview) return
+    if (createRulePreview.route_id) setCreateVoyageRouteId(String(createRulePreview.route_id))
+    if (createRulePreview.ship_id) setCreateVoyageShipId(String(createRulePreview.ship_id))
+    if (createRulePreview.widget_config_id) setCreateVoyageWidgetConfigId(String(createRulePreview.widget_config_id))
+    if (createRulePreview.departure_date) setCreateVoyageDepartureDate(createRulePreview.departure_date)
+    if (createRulePreview.arrival_date) setCreateVoyageArrivalDate(createRulePreview.arrival_date)
+    // Dismiss the chip after import.
+    setCreateRulePreview(null)
   }
 
   const enrichedVoyages = voyages.map((v) => ({
@@ -517,6 +500,21 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                    <MenuItem value="cancelled">Cancelled</MenuItem>
                 </TextField>
               </Stack>
+
+              {/* Rule-match banner — shown when the trip ID matches an active creation rule */}
+              {createRulePreview && (
+                <Box sx={{ mt: 1 }}>
+                  <Chip
+                    icon={<AutoFixHighRoundedIcon />}
+                    label={`Rule found: “${createRulePreview.matched_rule_name}” — Import settings?`}
+                    onClick={handleImportRuleSettings}
+                    color="success"
+                    variant="outlined"
+                    size="small"
+                    sx={{ cursor: 'pointer', fontWeight: 500 }}
+                  />
+                </Box>
+              )}
             </CardContent>
           </Card>
 
@@ -667,113 +665,6 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
           {voyagesError}
         </Typography>
       )}
-
-      {/* ── Ensure Voyage from Trip ID ── */}
-      <Box className="section-card">
-        <Stack spacing={2}>
-          <Box className="section-header">
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <TravelExploreRoundedIcon sx={{ color: '#0288d1' }} />
-                <h2 style={{ margin: 0 }}>Test or Create from Trip ID</h2>
-              </Stack>
-              <Typography variant="body2" className="subtitle">
-                Preview which voyage creation rule would match an external trip ID, then confirm to create the voyage.
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Input row */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="flex-start">
-            <TextField
-              label="External trip ID"
-              size="small"
-              value={ensureTripId}
-              onChange={(e) => {
-                setEnsureTripId(e.target.value)
-                // Clear preview when the input changes so results stay in sync.
-                setEnsurePreview(null)
-                setEnsureError('')
-              }}
-              sx={{ flexGrow: 1 }}
-              placeholder="e.g. HEL-TLL-2026-05-12"
-            />
-            <Button
-              variant="outlined"
-              onClick={() => void handlePreviewEnsure()}
-              disabled={!ensureTripId.trim() || ensureLoading}
-              sx={{ whiteSpace: 'nowrap', borderRadius: 2 }}
-            >
-              {ensureLoading ? 'Checking…' : 'Preview'}
-            </Button>
-          </Stack>
-
-          {/* No-match warning */}
-          {ensureError && (
-            <Alert severity="warning" sx={{ borderRadius: 2 }}>
-              {ensureError}
-            </Alert>
-          )}
-
-          {/* Already exists */}
-          {ensurePreview?.already_exists && (
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              A voyage for <strong>{ensurePreview.external_trip_id}</strong> already exists
-              (ID&nbsp;#{ensurePreview.existing_voyage_id}). No action needed.
-            </Alert>
-          )}
-
-          {/* Rule matched — show preview card */}
-          {ensurePreview && !ensurePreview.already_exists && (
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0fff4' }}>
-              <CardContent>
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32' }}>
-                    Rule matched — voyage would be created
-                  </Typography>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Rule</Typography>
-                      <Typography variant="body2" fontWeight={600}>{ensurePreview.matched_rule_name}</Typography>
-                      <Typography variant="caption" color="text.secondary" component="div" sx={{ fontFamily: 'monospace' }}>
-                        {ensurePreview.matched_rule_pattern}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Route</Typography>
-                      <Typography variant="body2" fontWeight={600}>{ensurePreview.route_name ?? `#${ensurePreview.route_id}`}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Ship</Typography>
-                      <Typography variant="body2" fontWeight={600}>{ensurePreview.ship_name ?? `#${ensurePreview.ship_id}`}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Departure</Typography>
-                      <Typography variant="body2" fontWeight={600}>{ensurePreview.departure_date}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Arrival</Typography>
-                      <Typography variant="body2" fontWeight={600}>{ensurePreview.arrival_date}</Typography>
-                    </Box>
-                  </Stack>
-                  <Box sx={{ pt: 1 }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() => void handleConfirmEnsure()}
-                      disabled={ensureConfirmLoading}
-                      sx={{ borderRadius: 2, fontWeight: 600 }}
-                    >
-                      {ensureConfirmLoading ? 'Creating…' : 'Create voyage'}
-                    </Button>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-        </Stack>
-      </Box>
 
       {/* ── Voyages list ── */}
       <Box className="section-card">
