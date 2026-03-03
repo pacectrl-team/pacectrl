@@ -97,7 +97,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   const [standardSpeedKnots, setStandardSpeedKnots] = useState('')
   const [standardEmissions, setStandardEmissions] = useState('')
-  const [standardArrivalDelta] = useState('0')
+
 
   const [fastSpeedKnots, setFastSpeedKnots] = useState('')
   const [fastEmissions, setFastEmissions] = useState('')
@@ -117,7 +117,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [editSlowDelta, setEditSlowDelta] = useState('')
   const [editStdSpeed, setEditStdSpeed] = useState('')
   const [editStdEmissions, setEditStdEmissions] = useState('')
-  const [editStdDelta, setEditStdDelta] = useState('')
+
   const [editFastSpeed, setEditFastSpeed] = useState('')
   const [editFastEmissions, setEditFastEmissions] = useState('')
   const [editFastDelta, setEditFastDelta] = useState('')
@@ -358,7 +358,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     setEditSlowDelta(String(entry.data.slow.expected_arrival_delta_minutes))
     setEditStdSpeed(String(entry.data.standard.speed_knots))
     setEditStdEmissions(String(entry.data.standard.expected_emissions_kg_co2))
-    setEditStdDelta('0')
     setEditFastSpeed(String(entry.data.fast.speed_knots))
     setEditFastEmissions(String(entry.data.fast.expected_emissions_kg_co2))
     setEditFastDelta(String(entry.data.fast.expected_arrival_delta_minutes))
