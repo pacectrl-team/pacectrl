@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useMemo, type FormEvent } from 'react'
 import {
   Box,
   Button,
@@ -35,9 +35,10 @@ import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
-import type { VoyageSummary, ShipSummary, RouteSummary, WidgetConfig } from '../../types/api'
+import type { VoyageSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 
 type VoyagesSectionProps = {
   token: string
@@ -45,19 +46,16 @@ type VoyagesSectionProps = {
 }
 
 const VOYAGES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/'
-const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
-const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
-const WIDGET_CONFIGS_URL =
-  'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 
 function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
   const { showNotification } = useNotification()
+  // Ships, routes, widget configs, and speed estimates come from shared context
+  // (fetched once per session — no extra API calls when switching views).
+  const { ships, routes, widgetConfigs, speedEstimates } = useReferenceData()
+
   const [voyages, setVoyages] = useState<VoyageSummary[]>([])
   const [voyagesLoading, setVoyagesLoading] = useState(false)
   const [voyagesError, setVoyagesError] = useState('')
-  const [ships, setShips] = useState<ShipSummary[]>([])
-  const [routes, setRoutes] = useState<RouteSummary[]>([])
-  const [widgetConfigs, setWidgetConfigs] = useState<WidgetConfig[]>([])
   const [createVoyageExternalTripId, setCreateVoyageExternalTripId] = useState('')
   const [createVoyageWidgetConfigId, setCreateVoyageWidgetConfigId] = useState('')
   const [createVoyageRouteId, setCreateVoyageRouteId] = useState('')
@@ -108,78 +106,30 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
     }
   }
 
-  const fetchShips = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(SHIPS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load ships')
-      }
-
-      const data = (await response.json()) as ShipSummary[]
-      setShips(data)
-    } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
-    }
-  }
-
-  const fetchRoutes = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(ROUTES_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load routes')
-      }
-
-      const data = (await response.json()) as RouteSummary[]
-      setRoutes(data)
-    } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
-    }
-  }
-
-  const fetchWidgetConfigs = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(WIDGET_CONFIGS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load widget configs')
-      }
-
-      const data = (await response.json()) as WidgetConfig[]
-      setWidgetConfigs(data)
-    } catch (err) {
-      setVoyagesError(err instanceof ForbiddenError ? err.message : 'Unable to load widget configs. Please try again.')
-    }
-  }
-
+  // Fetch voyage list on mount and whenever the token changes.
+  // Ships, routes, widget configs, and speed estimates are handled by ReferenceDataContext.
   useEffect(() => {
     void fetchVoyages()
-    void fetchShips()
-    void fetchRoutes()
-    void fetchWidgetConfigs()
   }, [token])
+
+  /**
+   * Set of valid ship+route pair keys derived from speed estimates in the shared context.
+   * Used to disable Ship/Route dropdown options that have no speed estimate configured.
+   * Format: "<ship_id>-<route_id>"
+   */
+  const validPairKeys = useMemo(
+    () => new Set(speedEstimates.map((e) => `${e.ship_id}-${e.route_id}`)),
+    [speedEstimates],
+  )
+
+  /**
+   * Returns true if the ship+route combo has a speed estimate configured,
+   * or if either side is not yet chosen (don't restrict until both are selected).
+   */
+  const hasValidPair = (shipId: string, routeId: string): boolean => {
+    if (!shipId || !routeId) return true
+    return validPairKeys.has(`${shipId}-${routeId}`)
+  }
 
   const handleCreateVoyage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -509,7 +459,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                     <em>None</em>
                   </MenuItem>
                   {ships.map((ship) => (
-                    <MenuItem key={ship.id} value={String(ship.id)}>
+                    <MenuItem
+                      key={ship.id}
+                      value={String(ship.id)}
+                      disabled={!hasValidPair(String(ship.id), createVoyageRouteId)}
+                      title={
+                        !hasValidPair(String(ship.id), createVoyageRouteId)
+                          ? 'No speed estimates configured for this ship + route combination'
+                          : undefined
+                      }
+                    >
                       {ship.name} (ID: {ship.id})
                     </MenuItem>
                   ))}
@@ -527,7 +486,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                     <em>None</em>
                   </MenuItem>
                   {routes.map((route) => (
-                    <MenuItem key={route.id} value={String(route.id)}>
+                    <MenuItem
+                      key={route.id}
+                      value={String(route.id)}
+                      disabled={!hasValidPair(createVoyageShipId, String(route.id))}
+                      title={
+                        !hasValidPair(createVoyageShipId, String(route.id))
+                          ? 'No speed estimates configured for this ship + route combination'
+                          : undefined
+                      }
+                    >
                       {route.name} (ID: {route.id})
                     </MenuItem>
                   ))}
@@ -895,7 +863,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                           <em>None</em>
                         </MenuItem>
                         {ships.map((ship) => (
-                          <MenuItem key={ship.id} value={String(ship.id)}>
+                          <MenuItem
+                            key={ship.id}
+                            value={String(ship.id)}
+                            disabled={!hasValidPair(String(ship.id), editVoyageRouteId)}
+                            title={
+                              !hasValidPair(String(ship.id), editVoyageRouteId)
+                                ? 'No speed estimates configured for this ship + route combination'
+                                : undefined
+                            }
+                          >
                             {ship.name} (ID: {ship.id})
                           </MenuItem>
                         ))}
@@ -913,7 +890,16 @@ function VoyagesSection({ token, operatorId }: VoyagesSectionProps) {
                           <em>None</em>
                         </MenuItem>
                         {routes.map((route) => (
-                          <MenuItem key={route.id} value={String(route.id)}>
+                          <MenuItem
+                            key={route.id}
+                            value={String(route.id)}
+                            disabled={!hasValidPair(editVoyageShipId, String(route.id))}
+                            title={
+                              !hasValidPair(editVoyageShipId, String(route.id))
+                                ? 'No speed estimates configured for this ship + route combination'
+                                : undefined
+                            }
+                          >
                             {route.name} (ID: {route.id})
                           </MenuItem>
                         ))}

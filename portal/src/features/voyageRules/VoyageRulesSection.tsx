@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Box,
   Button,
@@ -42,18 +42,16 @@ import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
 import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
-import type { VoyageCreationRule, RouteSummary, ShipSummary, WidgetConfig, VoyageSummary } from '../../types/api'
+import type { VoyageCreationRule, VoyageSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 
 type VoyageRulesSectionProps = {
   token: string
 }
 
 const RULES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyage-creation-rules/'
-const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
-const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
-const WIDGET_CONFIGS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/widget_configs/'
 const VOYAGES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/voyages/'
 
 // Helper function to format API error messages
@@ -140,10 +138,11 @@ function testPattern(pattern: string, tripId: string): { success: boolean; depar
 
 function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
   const { showNotification } = useNotification()
+  // Ships, routes, widget configs, and speed estimates come from shared context
+  // (fetched once per session — no extra API calls when switching views).
+  const { routes, ships, widgetConfigs, speedEstimates } = useReferenceData()
+
   const [rules, setRules] = useState<VoyageCreationRule[]>([])
-  const [routes, setRoutes] = useState<RouteSummary[]>([])
-  const [ships, setShips] = useState<ShipSummary[]>([])
-  const [widgetConfigs, setWidgetConfigs] = useState<WidgetConfig[]>([])
   const [rulesLoading, setRulesLoading] = useState(false)
   const [rulesError, setRulesError] = useState('')
 
@@ -207,66 +206,6 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     }
   }
 
-  const fetchRoutes = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(ROUTES_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = (await response.json()) as RouteSummary[]
-        setRoutes(data)
-      }
-    } catch {
-      // Fail silently
-    }
-  }
-
-  const fetchShips = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(SHIPS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = (await response.json()) as ShipSummary[]
-        setShips(data)
-      }
-    } catch {
-      // Fail silently
-    }
-  }
-
-  const fetchWidgetConfigs = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(WIDGET_CONFIGS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = (await response.json()) as WidgetConfig[]
-        setWidgetConfigs(data)
-      }
-    } catch {
-      // Fail silently
-    }
-  }
-
   const fetchVoyagesForRule = async (ruleId: number) => {
     if (!token) return
 
@@ -290,12 +229,30 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
     }
   }
 
+  // Fetch the rules list on mount. Ships, routes, widget configs, and speed estimates
+  // are handled by ReferenceDataContext and require no additional fetches here.
   useEffect(() => {
     void fetchRules()
-    void fetchRoutes()
-    void fetchShips()
-    void fetchWidgetConfigs()
   }, [token])
+
+  /**
+   * Set of valid ship+route pair keys derived from speed estimates in the shared context.
+   * Used to disable Ship/Route dropdown options that have no speed estimate configured.
+   * Format: "<ship_id>-<route_id>"
+   */
+  const validPairKeys = useMemo(
+    () => new Set(speedEstimates.map((e) => `${e.ship_id}-${e.route_id}`)),
+    [speedEstimates],
+  )
+
+  /**
+   * Returns true if the ship+route combo has a speed estimate configured,
+   * or if either side is not yet chosen (don't restrict until both are selected).
+   */
+  const hasValidPair = (shipId: string, routeId: string): boolean => {
+    if (!shipId || !routeId) return true
+    return validPairKeys.has(`${shipId}-${routeId}`)
+  }
 
   useEffect(() => {
     if (formPattern && testTripId) {
@@ -795,7 +752,16 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                   required
                 >
                   {routes.map((route) => (
-                    <MenuItem key={route.id} value={route.id}>
+                    <MenuItem
+                      key={route.id}
+                      value={route.id}
+                      disabled={!hasValidPair(formShipId, String(route.id))}
+                      title={
+                        !hasValidPair(formShipId, String(route.id))
+                          ? 'No speed estimates configured for this ship + route combination'
+                          : undefined
+                      }
+                    >
                       {route.name}
                     </MenuItem>
                   ))}
@@ -811,7 +777,16 @@ function VoyageRulesSection({ token }: VoyageRulesSectionProps) {
                   required
                 >
                   {ships.map((ship) => (
-                    <MenuItem key={ship.id} value={ship.id}>
+                    <MenuItem
+                      key={ship.id}
+                      value={ship.id}
+                      disabled={!hasValidPair(String(ship.id), formRouteId)}
+                      title={
+                        !hasValidPair(String(ship.id), formRouteId)
+                          ? 'No speed estimates configured for this ship + route combination'
+                          : undefined
+                      }
+                    >
                       {ship.name}
                     </MenuItem>
                   ))}

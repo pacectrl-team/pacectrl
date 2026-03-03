@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { RouteSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 
 type RoutesSectionProps = {
   token: string
@@ -35,8 +36,8 @@ const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/r
 
 function RoutesSection({ token }: RoutesSectionProps) {
   const { showNotification } = useNotification()
-  const [routes, setRoutes] = useState<RouteSummary[]>([])
-  const [routesLoading, setRoutesLoading] = useState(false)
+  // Routes list and loading state come from shared context (fetched once per session)
+  const { routes, loading: routesLoading, refreshRoutes } = useReferenceData()
   const [routesError, setRoutesError] = useState('')
 
   const [createName, setCreateName] = useState('')
@@ -56,36 +57,6 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [editArrivalTime, setEditArrivalTime] = useState('')
   const [editDurationNights, setEditDurationNights] = useState('')
   const [editIsActive, setEditIsActive] = useState(true)
-
-  const fetchRoutes = async () => {
-    if (!token) return
-
-    setRoutesLoading(true)
-    setRoutesError('')
-    try {
-      const response = await authFetch(ROUTES_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load routes')
-      }
-
-      const data = (await response.json()) as RouteSummary[]
-      setRoutes(data)
-    } catch (err) {
-      setRoutesError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
-    } finally {
-      setRoutesLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void fetchRoutes()
-  }, [token])
 
   const extractTimeForInput = (value: string): string => {
     if (!value) return ''
@@ -147,7 +118,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setCreateDurationNights('')
       setCreateIsActive(true)
 
-      await fetchRoutes()
+      await refreshRoutes()
       showNotification('Route created successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to create route. Please check the details and try again.'
@@ -224,7 +195,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
 
       setDialogOpen(false)
       setSelectedRoute(null)
-      await fetchRoutes()
+      await refreshRoutes()
       showNotification('Route updated successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to update route. Please try again.'
@@ -258,7 +229,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
       setEditDurationNights('')
       setEditIsActive(true)
 
-      await fetchRoutes()
+      await refreshRoutes()
       showNotification('Route deleted successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete route. Please try again.'

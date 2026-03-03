@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   Box,
   Button,
@@ -21,6 +21,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { ShipSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 
 type ShipsSectionProps = {
   token: string
@@ -30,8 +31,8 @@ const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/sh
 
 function ShipsSection({ token }: ShipsSectionProps) {
   const { showNotification } = useNotification()
-  const [ships, setShips] = useState<ShipSummary[]>([])
-  const [shipsLoading, setShipsLoading] = useState(false)
+  // Ships list and loading state come from shared context (fetched once per session)
+  const { ships, loading: shipsLoading, refreshShips } = useReferenceData()
   const [shipsError, setShipsError] = useState('')
 
   const [createName, setCreateName] = useState('')
@@ -41,36 +42,6 @@ function ShipsSection({ token }: ShipsSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editImoNumber, setEditImoNumber] = useState('')
-
-  const fetchShips = async () => {
-    if (!token) return
-
-    setShipsLoading(true)
-    setShipsError('')
-    try {
-      const response = await authFetch(SHIPS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load ships')
-      }
-
-      const data = (await response.json()) as ShipSummary[]
-      setShips(data)
-    } catch (err) {
-      setShipsError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
-    } finally {
-      setShipsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void fetchShips()
-  }, [token])
 
   const handleCreateShip = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -101,7 +72,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
 
       setCreateName('')
       setCreateImoNumber('')
-      await fetchShips()
+      await refreshShips()
       showNotification('Ship created successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to create ship. Please check the details and try again.'
@@ -152,7 +123,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
 
       setDialogOpen(false)
       setSelectedShip(null)
-      await fetchShips()
+      await refreshShips()
       showNotification('Ship updated successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to update ship. Please try again.'
@@ -180,7 +151,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
       setSelectedShip(null)
       setEditName('')
       setEditImoNumber('')
-      await fetchShips()
+      await refreshShips()
       showNotification('Ship deleted successfully!')
     } catch (err) {
       const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete ship. Please try again.'

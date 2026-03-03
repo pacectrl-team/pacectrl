@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Alert,
   Box,
@@ -24,12 +24,10 @@ import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 import type {
-  AllSpeedEstimatesResponse,
   RouteShipAnchorsOut,
   SpeedAnchorsEstimate,
-  RouteSummary,
-  ShipSummary,
 } from '../../types/api'
 
 type SpeedEstimatesSectionProps = {
@@ -78,18 +76,14 @@ const getSpeedAnchorsValidationError = (body: SpeedAnchorsEstimate): string | nu
   return null
 }
 
-const ROUTES_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/routes/'
-const SHIPS_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/ships/'
-const SPEED_ESTIMATES_URL =
-  'https://pacectrl-production.up.railway.app/api/v1/operator/speed-estimates/'
 
 function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionProps) {
   const { showNotification } = useNotification()
+  // Reference data (ships, routes, speed estimates) come from shared context
+  const { routes, ships, speedEstimates, refreshSpeedEstimates } = useReferenceData()
+
   const [routeId, setRouteId] = useState('')
   const [shipId, setShipId] = useState('')
-
-  const [routes, setRoutes] = useState<RouteSummary[]>([])
-  const [ships, setShips] = useState<ShipSummary[]>([])
 
   const [slowSpeedKnots, setSlowSpeedKnots] = useState('')
   const [slowEmissions, setSlowEmissions] = useState('')
@@ -98,7 +92,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [standardSpeedKnots, setStandardSpeedKnots] = useState('')
   const [standardEmissions, setStandardEmissions] = useState('')
 
-
   const [fastSpeedKnots, setFastSpeedKnots] = useState('')
   const [fastEmissions, setFastEmissions] = useState('')
   const [fastArrivalDelta, setFastArrivalDelta] = useState('')
@@ -106,8 +99,6 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  const [entries, setEntries] = useState<SpeedEstimateEntry[]>([])
 
   // ── Modal editing state ──
   const [editOpen, setEditOpen] = useState(false)
@@ -124,131 +115,54 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
 
-  const fetchRoutes = async () => {
-    if (!token) return
+  /**
+   * Derive SpeedEstimateEntry list from the context's raw RouteShipAnchorsOut items.
+   * Updates automatically whenever the context refreshes (e.g., after a save).
+   */
+  const entries = useMemo<SpeedEstimateEntry[]>(() => {
+    return speedEstimates
+      .map((item: RouteShipAnchorsOut) => {
+        const { anchors } = item
+        const slow = anchors.slow
+        const standard = anchors.standard
+        const fast = anchors.fast
 
-    try {
-      const response = await authFetch(ROUTES_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        if (!slow || !standard || !fast) return null
+
+        const data: SpeedAnchorsEstimate = {
+          slow: {
+            speed_knots: slow.speed_knots,
+            expected_emissions_kg_co2: slow.expected_emissions_kg_co2,
+            expected_arrival_delta_minutes: slow.expected_arrival_delta_minutes,
+          },
+          standard: {
+            speed_knots: standard.speed_knots,
+            expected_emissions_kg_co2: standard.expected_emissions_kg_co2,
+            expected_arrival_delta_minutes: standard.expected_arrival_delta_minutes,
+          },
+          fast: {
+            speed_knots: fast.speed_knots,
+            expected_emissions_kg_co2: fast.expected_emissions_kg_co2,
+            expected_arrival_delta_minutes: fast.expected_arrival_delta_minutes,
+          },
+        }
+
+        return { routeId: item.route_id, shipId: item.ship_id, data }
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to load routes')
-      }
-
-      const data = (await response.json()) as RouteSummary[]
-      setRoutes(data)
-    } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to load routes. Please try again.')
-    }
-  }
-
-  const fetchShips = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(SHIPS_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load ships')
-      }
-
-      const data = (await response.json()) as ShipSummary[]
-      setShips(data)
-    } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to load ships. Please try again.')
-    }
-  }
-
-  const fetchAllEstimates = async () => {
-    if (!token) return
-
-    try {
-      const response = await authFetch(SPEED_ESTIMATES_URL, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load speed estimates')
-      }
-
-      const json = (await response.json()) as AllSpeedEstimatesResponse
-
-      const nextEntries: SpeedEstimateEntry[] = json.items
-        .map((item: RouteShipAnchorsOut) => {
-          const anchors = item.anchors
-
-          const slow = anchors.slow || anchors['slow']
-          const standard = anchors.standard || anchors['standard']
-          const fast = anchors.fast || anchors['fast']
-
-          if (!slow || !standard || !fast) {
-            return null
-          }
-
-          const data: SpeedAnchorsEstimate = {
-            slow: {
-              speed_knots: slow.speed_knots,
-              expected_emissions_kg_co2: slow.expected_emissions_kg_co2,
-              expected_arrival_delta_minutes:
-                slow.expected_arrival_delta_minutes,
-            },
-            standard: {
-              speed_knots: standard.speed_knots,
-              expected_emissions_kg_co2:
-                standard.expected_emissions_kg_co2,
-              expected_arrival_delta_minutes:
-                standard.expected_arrival_delta_minutes,
-            },
-            fast: {
-              speed_knots: fast.speed_knots,
-              expected_emissions_kg_co2: fast.expected_emissions_kg_co2,
-              expected_arrival_delta_minutes:
-                fast.expected_arrival_delta_minutes,
-            },
-          }
-
-          return {
-            routeId: item.route_id,
-            shipId: item.ship_id,
-            data,
-          }
-        })
-        .filter((entry): entry is SpeedEstimateEntry => entry !== null)
-
-      setEntries(nextEntries)
-    } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to load speed estimates. Please try again.')
-    }
-  }
+      .filter((entry): entry is SpeedEstimateEntry => entry !== null)
+  }, [speedEstimates])
 
   const resetMessages = () => {
     setError('')
     setSuccess('')
   }
 
+  // Pre-select the ship dropdown when opened via a deep-link (e.g., from Overview)
   useEffect(() => {
-    void fetchRoutes()
-    void fetchShips()
-
-    // Load all existing speed estimates for the table from the items array
-    void fetchAllEstimates()
-
     if (initialShipId != null) {
       setShipId(String(initialShipId))
     }
-  }, [token, initialShipId])
+  }, [initialShipId])
 
   const handleSave = async () => {
     if (!token) return
@@ -322,22 +236,10 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       if (!response.ok) {
         throw new Error('Failed to save speed estimates')
       }
-      setEntries((prev) => {
-        const existingIndex = prev.findIndex(
-          (entry) => entry.routeId === routeIdNum && entry.shipId === shipIdNum,
-        )
-        const newEntry: SpeedEstimateEntry = {
-          routeId: routeIdNum,
-          shipId: shipIdNum,
-          data: body,
-        }
-        if (existingIndex === -1) {
-          return [...prev, newEntry]
-        }
-        const next = [...prev]
-        next[existingIndex] = newEntry
-        return next
-      })
+      // Re-fetch speed estimates from the API to update the shared context
+      // (which in turn updates the derived 'entries' via useMemo, and refreshes
+      // the cross-filtering data used by VoyagesSection and VoyageRulesSection).
+      await refreshSpeedEstimates()
 
       setSuccess('Speed estimates saved successfully.')
       showNotification('Speed estimates saved successfully!')
@@ -423,16 +325,8 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
       if (!response.ok) throw new Error('Failed to save')
 
-      setEntries((prev) => {
-        const idx = prev.findIndex(
-          (e) => e.routeId === editEntry.routeId && e.shipId === editEntry.shipId,
-        )
-        const updated: SpeedEstimateEntry = { ...editEntry, data: body }
-        if (idx === -1) return [...prev, updated]
-        const next = [...prev]
-        next[idx] = updated
-        return next
-      })
+      // Re-fetch speed estimates to update the shared context and derived entries
+      await refreshSpeedEstimates()
 
       closeEditModal()
       setSuccess('Speed estimates updated successfully.')
