@@ -110,9 +110,9 @@ function AboutPage() {
               sx={{
                 fontWeight: 800,
                 color: '#fff',
-                fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4.5rem' },
+                fontSize: { xs: '2rem', sm: '3rem', md: '4.5rem' },
                 maxWidth: '900px',
-                lineHeight: 1.1,
+                lineHeight: 1.2,
               }}
             >
               Pioneering Sustainable
@@ -163,7 +163,7 @@ function AboutPage() {
                 color: '#1B4332',
                 mt: 1,
                 mb: 3,
-                fontSize: { xs: '2rem', md: '2.5rem' },
+                fontSize: { xs: '1.75rem', md: '2.5rem' },
               }}
             >
               Slow Down, Cut Emissions
@@ -197,9 +197,9 @@ function AboutPage() {
                 elevation={0}
                 sx={{
                   flex: 1,
-                  maxWidth: 220,
-                  py: 4,
-                  px: 3,
+                  maxWidth: { xs: '100%', sm: 220 },
+                  py: { xs: 2.5, sm: 4 },
+                  px: { xs: 2, sm: 3 },
                   borderRadius: 3,
                   background: 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%)',
                   textAlign: 'center',
@@ -212,7 +212,9 @@ function AboutPage() {
                     background: 'linear-gradient(135deg, #55EFC4, #6BCB77)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    mb: 1,
+                    mb: { xs: 0.5, sm: 1 },
+                    lineHeight: 1.1,
+                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
                   }}
                 >
                   {stat}
@@ -244,7 +246,7 @@ function AboutPage() {
                   color: '#1B4332',
                   mt: 1,
                   mb: 3,
-                  fontSize: { xs: '2rem', md: '2.5rem' },
+                  fontSize: { xs: '1.75rem', md: '2.5rem' },
                 }}
               >
                 Empowering Greener Shipping
@@ -309,7 +311,7 @@ function AboutPage() {
                 fontWeight: 800,
                 color: '#1B4332',
                 mt: 1,
-                fontSize: { xs: '2rem', md: '2.5rem' },
+                fontSize: { xs: '1.75rem', md: '2.5rem' },
               }}
             >
               How It Works
@@ -376,7 +378,7 @@ function AboutPage() {
                   fontWeight: 800,
                   color: '#1B4332',
                   mt: 1,
-                  fontSize: { xs: '2rem', md: '2.5rem' },
+                  fontSize: { xs: '1.75rem', md: '2.5rem' },
                 }}
               >
                 Speed vs. Emissions
@@ -434,8 +436,8 @@ function AboutPage() {
                 elevation={0}
                 sx={{
                   flex: 1,
-                  py: 4,
-                  px: 3,
+                  py: { xs: 3, sm: 5 },
+                  px: { xs: 2, sm: 4 },
                   borderRadius: 3,
                   background: 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%)',
                   textAlign: 'center',
@@ -451,7 +453,9 @@ function AboutPage() {
                     background: 'linear-gradient(135deg, #55EFC4, #6BCB77)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    my: 1,
+                    my: { xs: 0.5, sm: 1.5 },
+                    lineHeight: 1,
+                    fontSize: { xs: '3rem', sm: '3.25rem', md: '3.5rem' }
                   }}
                 >
                   {saving}%
@@ -463,7 +467,7 @@ function AboutPage() {
                     borderRadius: 4,
                     background: 'rgba(255,255,255,0.15)',
                     overflow: 'hidden',
-                    mt: 1,
+                    mt: { xs: 1.5, sm: 2 },
                   }}
                 >
                   <Box
@@ -483,8 +487,8 @@ function AboutPage() {
                 elevation={0}
                 sx={{
                   flex: 1,
-                  py: 4,
-                  px: 3,
+                  py: { xs: 3, sm: 5 },
+                  px: { xs: 2, sm: 4 },
                   borderRadius: 3,
                   background: '#f8fffe',
                   border: '2px solid #b2dfdb',
@@ -496,7 +500,13 @@ function AboutPage() {
                 </Typography>
                 <Typography
                   variant="h2"
-                  sx={{ fontWeight: 900, color: '#1B4332', my: 1 }}
+                  sx={{
+                    fontWeight: 900,
+                    color: '#1B4332',
+                    my: { xs: 0.5, sm: 1.5 },
+                    lineHeight: 1,
+                    fontSize: { xs: '3rem', sm: '3.25rem', md: '3.5rem' }
+                  }}
                 >
                   +{extraMins}m
                 </Typography>
@@ -530,7 +540,7 @@ function AboutPage() {
                 fontWeight: 800,
                 color: '#1B4332',
                 mt: 1,
-                fontSize: { xs: '2rem', md: '2.5rem' },
+                fontSize: { xs: '1.75rem', md: '2.5rem' },
               }}
             >
               Meet the Team
@@ -545,34 +555,37 @@ function AboutPage() {
           </Box>
 
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={3}
-            flexWrap="wrap"
+            direction="row"
             justifyContent="center"
-            useFlexGap
+            sx={{
+              width: '100%',
+              display: 'grid',
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+              gap: { xs: 2, sm: 3 },
+            }}
           >
             {TEAM.map(({ name, role, photo }) => (
               <Card
                 key={name}
                 elevation={0}
                 sx={{
-                  width: { xs: '100%', sm: 200 },
                   borderRadius: 3,
                   background: 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%)',
                   textAlign: 'center',
+                  height: '100%',
                 }}
               >
-                <CardContent sx={{ py: 4 }}>
+                <CardContent sx={{ py: { xs: 3, sm: 4 }, px: { xs: 1.5, sm: 2 } }}>
                   {/* Photo avatar */}
                   <Box
                     sx={{
-                      width: 96,
-                      height: 96,
+                      width: { xs: 72, sm: 96 },
+                      height: { xs: 72, sm: 96 },
                       borderRadius: 2,
                       border: '2px solid #55EFC4',
                       overflow: 'hidden',
                       mx: 'auto',
-                      mb: 2,
+                      mb: { xs: 1.5, sm: 2 },
                       background: 'rgba(85, 239, 196, 0.12)',
                     }}
                   >
@@ -582,21 +595,21 @@ function AboutPage() {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#fff' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#fff', fontSize: { xs: '0.9rem', sm: '1rem' }, lineHeight: 1.2 }}>
                     {name}
                   </Typography>
                   <Box
                     sx={{
                       display: 'inline-block',
-                      mt: 1,
-                      px: 1.5,
-                      py: 0.4,
+                      mt: { xs: 0.5, sm: 1 },
+                      px: { xs: 1, sm: 1.5 },
+                      py: { xs: 0.2, sm: 0.4 },
                       borderRadius: 10,
                       background: 'rgba(85, 239, 196, 0.15)',
                       border: '1px solid rgba(85, 239, 196, 0.35)',
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: '#55EFC4', fontWeight: 600 }}>
+                    <Typography variant="caption" sx={{ color: '#55EFC4', fontWeight: 600, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                       {role}
                     </Typography>
                   </Box>
