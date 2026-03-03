@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -12,10 +13,12 @@ import {
   IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   MenuItem,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SpeedIcon from '@mui/icons-material/SpeedRounded'
 import Co2Icon from '@mui/icons-material/CloudRounded'
 import ScheduleIcon from '@mui/icons-material/ScheduleRounded'
@@ -41,35 +44,35 @@ type SpeedEstimateEntry = {
 }
 
 const isPositiveNumber = (value: number) => Number.isFinite(value) && value > 0
-const isNegativeNumber = (value: number) => Number.isFinite(value) && value < 0
 const isNonNegative = (value: number) => Number.isFinite(value) && value >= 0
+const isNonPositive = (value: number) => Number.isFinite(value) && value <= 0
 
 const getSpeedAnchorsValidationError = (body: SpeedAnchorsEstimate): string | null => {
   const positiveFields: Array<[string, number]> = [
-    ['Slow speed value', body.slow.speed_knots],
-    ['Slow emissions value', body.slow.expected_emissions_kg_co2],
-    ['Standard speed value', body.standard.speed_knots],
-    ['Standard emissions value', body.standard.expected_emissions_kg_co2],
-    ['Fast speed value', body.fast.speed_knots],
-    ['Fast emissions value', body.fast.expected_emissions_kg_co2],
+    ['Slow speed (knots)', body.slow.speed_knots],
+    ['Slow CO₂ emissions', body.slow.expected_emissions_kg_co2],
+    ['Standard speed (knots)', body.standard.speed_knots],
+    ['Standard CO₂ emissions', body.standard.expected_emissions_kg_co2],
+    ['Fast speed (knots)', body.fast.speed_knots],
+    ['Fast CO₂ emissions', body.fast.expected_emissions_kg_co2],
   ]
 
   for (const [fieldName, value] of positiveFields) {
     if (!isPositiveNumber(value)) {
-      return `${fieldName} must be positive.`
+      return `${fieldName} must be a positive number.`
     }
   }
 
-  if (!isPositiveNumber(body.slow.expected_arrival_delta_minutes)) {
-    return 'Slow arrival Δ value must be positive.'
+  if (!isNonNegative(body.slow.expected_arrival_delta_minutes)) {
+    return 'Slow arrival Δ must be 0 or positive (ship arrives later than standard).'
   }
 
-  if (!isNonNegative(body.standard.expected_arrival_delta_minutes)) {
-    return 'Standard arrival Δ value must be non-negative.'
+  if (body.standard.expected_arrival_delta_minutes !== 0) {
+    return 'Standard arrival Δ must be 0 (it is the baseline).'
   }
 
-  if (!isNegativeNumber(body.fast.expected_arrival_delta_minutes)) {
-    return 'Fast arrival Δ value must be negative.'
+  if (!isNonPositive(body.fast.expected_arrival_delta_minutes)) {
+    return 'Fast arrival Δ must be 0 or negative (ship arrives earlier than standard).'
   }
 
   return null
@@ -94,7 +97,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
 
   const [standardSpeedKnots, setStandardSpeedKnots] = useState('')
   const [standardEmissions, setStandardEmissions] = useState('')
-  const [standardArrivalDelta, setStandardArrivalDelta] = useState('')
+  const [standardArrivalDelta] = useState('0')
 
   const [fastSpeedKnots, setFastSpeedKnots] = useState('')
   const [fastEmissions, setFastEmissions] = useState('')
@@ -259,19 +262,21 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       return
     }
 
-    const fields = [
-      slowSpeedKnots,
-      slowEmissions,
-      slowArrivalDelta,
-      standardSpeedKnots,
-      standardEmissions,
-      standardArrivalDelta,
-      fastSpeedKnots,
-      fastEmissions,
-      fastArrivalDelta,
-    ]
+    // Prevent duplicate ship+route combination
+    const alreadyExists = entries.some(
+      (e) => e.routeId === routeIdNum && e.shipId === shipIdNum,
+    )
+    if (alreadyExists) {
+      setError(
+        'A speed estimate for this route & ship combination already exists. Click the entry in the list below to edit it.',
+      )
+      return
+    }
 
-    if (fields.some((value) => value === '')) {
+    if (
+      [slowSpeedKnots, slowEmissions, slowArrivalDelta, standardSpeedKnots, standardEmissions, fastSpeedKnots, fastEmissions, fastArrivalDelta]
+        .some((value) => value === '')
+    ) {
       setError('Fill in all slow, standard and fast fields before saving.')
       return
     }
@@ -285,7 +290,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       standard: {
         speed_knots: Number(standardSpeedKnots),
         expected_emissions_kg_co2: Number(standardEmissions),
-        expected_arrival_delta_minutes: Number(standardArrivalDelta),
+        expected_arrival_delta_minutes: 0,
       },
       fast: {
         speed_knots: Number(fastSpeedKnots),
@@ -353,7 +358,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
     setEditSlowDelta(String(entry.data.slow.expected_arrival_delta_minutes))
     setEditStdSpeed(String(entry.data.standard.speed_knots))
     setEditStdEmissions(String(entry.data.standard.expected_emissions_kg_co2))
-    setEditStdDelta(String(entry.data.standard.expected_arrival_delta_minutes))
+    setEditStdDelta('0')
     setEditFastSpeed(String(entry.data.fast.speed_knots))
     setEditFastEmissions(String(entry.data.fast.expected_emissions_kg_co2))
     setEditFastDelta(String(entry.data.fast.expected_arrival_delta_minutes))
@@ -370,13 +375,10 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
   const handleEditSave = async () => {
     if (!editEntry || !token) return
 
-    const fields = [
-      editSlowSpeed, editSlowEmissions, editSlowDelta,
-      editStdSpeed, editStdEmissions, editStdDelta,
-      editFastSpeed, editFastEmissions, editFastDelta,
-    ]
-
-    if (fields.some((v) => v === '')) {
+    if (
+      [editSlowSpeed, editSlowEmissions, editSlowDelta, editStdSpeed, editStdEmissions, editFastSpeed, editFastEmissions, editFastDelta]
+        .some((v) => v === '')
+    ) {
       setEditError('Fill in all slow, standard and fast fields before saving.')
       return
     }
@@ -390,7 +392,7 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
       standard: {
         speed_knots: Number(editStdSpeed),
         expected_emissions_kg_co2: Number(editStdEmissions),
-        expected_arrival_delta_minutes: Number(editStdDelta),
+        expected_arrival_delta_minutes: 0,
       },
       fast: {
         speed_knots: Number(editFastSpeed),
@@ -456,9 +458,18 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
         </Box>
 
       <Stack spacing={2.5}>
+        {/* Info banner */}
+        <Alert
+          severity="info"
+          icon={<InfoOutlinedIcon fontSize="small" />}
+          sx={{ borderRadius: 2, fontSize: '0.85rem' }}
+        >
+          <strong>About these estimates:</strong> CO₂ emissions represent the total ship emissions for the full voyage (not per passenger). Speeds are the ship&apos;s peak cruising speed. All CO₂ figures are estimates — they answer &quot;if the ship cruises at speed X, what are the approximate total emissions for this route?&quot;
+        </Alert>
+
         {/* Route & Ship selection */}
         <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, color: 'text.secondary' }}>
-          Select Route & Ship
+          Select Route &amp; Ship
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
@@ -535,8 +546,9 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={slowSpeedKnots}
-                  onChange={(event) => setSlowSpeedKnots(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setSlowSpeedKnots(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
                 />
                 <TextField
@@ -545,20 +557,25 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={slowEmissions}
-                  onChange={(event) => setSlowEmissions(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setSlowEmissions(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
                 />
-                <TextField
-                  label="Arrival Δ (minutes)"
-                  type="number"
-                  variant="outlined"
-                  size="small"
-                  value={slowArrivalDelta}
-                  onChange={(event) => setSlowArrivalDelta(event.target.value)}
-                  fullWidth
-                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
-                />
+                <Tooltip title="Slow speed arrives later than standard. Must be ≥ 0." placement="top" arrow>
+                  <TextField
+                    label="Arrival Δ (minutes)"
+                    type="number"
+                    variant="outlined"
+                    size="small"
+                    value={slowArrivalDelta}
+                    onChange={(event) => { if (event.target.value === '' || Number(event.target.value) >= 0) setSlowArrivalDelta(event.target.value) }}
+                    fullWidth
+                    inputProps={{ min: 0 }}
+                    InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }}
+                    helperText="≥ 0 (later than standard)"
+                  />
+                </Tooltip>
               </Stack>
             </CardContent>
           </Card>
@@ -576,8 +593,9 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={standardSpeedKnots}
-                  onChange={(event) => setStandardSpeedKnots(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setStandardSpeedKnots(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
                 />
                 <TextField
@@ -586,20 +604,24 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={standardEmissions}
-                  onChange={(event) => setStandardEmissions(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setStandardEmissions(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
                 />
-                <TextField
-                  label="Arrival Δ (minutes)"
-                  type="number"
-                  variant="outlined"
-                  size="small"
-                  value={standardArrivalDelta}
-                  onChange={(event) => setStandardArrivalDelta(event.target.value)}
-                  fullWidth
-                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
-                />
+                <Tooltip title="Standard is the baseline — arrival delta is always 0." placement="top" arrow>
+                  <TextField
+                    label="Arrival Δ (minutes)"
+                    type="number"
+                    variant="outlined"
+                    size="small"
+                    value="0"
+                    disabled
+                    fullWidth
+                    InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }}
+                    helperText="Fixed at 0 (baseline)"
+                  />
+                </Tooltip>
               </Stack>
             </CardContent>
           </Card>
@@ -617,8 +639,9 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={fastSpeedKnots}
-                  onChange={(event) => setFastSpeedKnots(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setFastSpeedKnots(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
                 />
                 <TextField
@@ -627,20 +650,25 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
                   variant="outlined"
                   size="small"
                   value={fastEmissions}
-                  onChange={(event) => setFastEmissions(event.target.value)}
+                  onChange={(event) => { if (event.target.value === '' || Number(event.target.value) > 0) setFastEmissions(event.target.value) }}
                   fullWidth
+                  inputProps={{ min: 0 }}
                   InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
                 />
-                <TextField
-                  label="Arrival Δ (minutes)"
-                  type="number"
-                  variant="outlined"
-                  size="small"
-                  value={fastArrivalDelta}
-                  onChange={(event) => setFastArrivalDelta(event.target.value)}
-                  fullWidth
-                  InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
-                />
+                <Tooltip title="Fast speed arrives earlier than standard. Must be ≤ 0." placement="top" arrow>
+                  <TextField
+                    label="Arrival Δ (minutes)"
+                    type="number"
+                    variant="outlined"
+                    size="small"
+                    value={fastArrivalDelta}
+                    onChange={(event) => { if (event.target.value === '' || Number(event.target.value) <= 0) setFastArrivalDelta(event.target.value) }}
+                    fullWidth
+                    inputProps={{ max: 0 }}
+                    InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }}
+                    helperText="≤ 0 (earlier than standard)"
+                  />
+                </Tooltip>
               </Stack>
             </CardContent>
           </Card>
@@ -822,9 +850,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Chip label="Slow" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#2D6A4F', color: '#fff', mb: 1.5 }} />
                 <Stack spacing={1.5}>
-                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editSlowSpeed} onChange={(e) => setEditSlowSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
-                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editSlowEmissions} onChange={(e) => setEditSlowEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
-                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editSlowDelta} onChange={(e) => setEditSlowDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editSlowSpeed} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditSlowSpeed(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editSlowEmissions} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditSlowEmissions(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} />
+                  <Tooltip title="Slow speed arrives later than standard. Must be ≥ 0." placement="top" arrow>
+                    <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editSlowDelta} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) >= 0) setEditSlowDelta(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#2D6A4F', fontSize: 18 }} /> }} helperText="≥ 0 (later than standard)" />
+                  </Tooltip>
                 </Stack>
               </CardContent>
             </Card>
@@ -834,9 +864,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Chip label="Standard" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#0984E3', color: '#fff', mb: 1.5 }} />
                 <Stack spacing={1.5}>
-                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editStdSpeed} onChange={(e) => setEditStdSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
-                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editStdEmissions} onChange={(e) => setEditStdEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
-                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editStdDelta} onChange={(e) => setEditStdDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editStdSpeed} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditStdSpeed(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editStdEmissions} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditStdEmissions(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} />
+                  <Tooltip title="Standard is the baseline — arrival delta is always 0." placement="top" arrow>
+                    <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value="0" disabled fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#0984E3', fontSize: 18 }} /> }} helperText="Fixed at 0 (baseline)" />
+                  </Tooltip>
                 </Stack>
               </CardContent>
             </Card>
@@ -846,9 +878,11 @@ function SpeedEstimatesSection({ token, initialShipId }: SpeedEstimatesSectionPr
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Chip label="Fast" size="small" sx={{ fontWeight: 700, fontSize: 12, background: '#E17055', color: '#fff', mb: 1.5 }} />
                 <Stack spacing={1.5}>
-                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editFastSpeed} onChange={(e) => setEditFastSpeed(e.target.value)} fullWidth InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
-                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editFastEmissions} onChange={(e) => setEditFastEmissions(e.target.value)} fullWidth InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
-                  <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editFastDelta} onChange={(e) => setEditFastDelta(e.target.value)} fullWidth InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                  <TextField label="Speed (knots)" type="number" variant="outlined" size="small" value={editFastSpeed} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditFastSpeed(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <SpeedIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                  <TextField label="CO₂ Emissions (kg)" type="number" variant="outlined" size="small" value={editFastEmissions} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) > 0) setEditFastEmissions(e.target.value) }} fullWidth inputProps={{ min: 0 }} InputProps={{ startAdornment: <Co2Icon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} />
+                  <Tooltip title="Fast speed arrives earlier than standard. Must be ≤ 0." placement="top" arrow>
+                    <TextField label="Arrival Δ (minutes)" type="number" variant="outlined" size="small" value={editFastDelta} onChange={(e) => { if (e.target.value === '' || Number(e.target.value) <= 0) setEditFastDelta(e.target.value) }} fullWidth inputProps={{ max: 0 }} InputProps={{ startAdornment: <ScheduleIcon sx={{ mr: 1, color: '#E17055', fontSize: 18 }} /> }} helperText="≤ 0 (earlier than standard)" />
+                  </Tooltip>
                 </Stack>
               </CardContent>
             </Card>
