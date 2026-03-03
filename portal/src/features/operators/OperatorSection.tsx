@@ -19,10 +19,13 @@ import {
 } from '@mui/material'
 import BusinessIcon from '@mui/icons-material/BusinessRounded'
 import KeyRoundedIcon from '@mui/icons-material/KeyRounded'
+import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
-import type { OperatorSummary, WebhookSecretResponse } from '../../types/api'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import type { OperatorSummary, WebhookSecretResponse, WidgetKeyResponse } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
 
@@ -46,6 +49,14 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
   const [secretDialogOpen, setSecretDialogOpen] = useState(false)
   const [generatedSecret, setGeneratedSecret] = useState('')
   const [copied, setCopied] = useState(false)
+
+  // Widget key state
+  const [widgetKey, setWidgetKey] = useState<string | null>(null)
+  const [widgetKeyLoading, setWidgetKeyLoading] = useState(false)
+  const [widgetKeyError, setWidgetKeyError] = useState('')
+  const [widgetKeyGenerating, setWidgetKeyGenerating] = useState(false)
+  const [widgetKeyDeleting, setWidgetKeyDeleting] = useState(false)
+  const [widgetKeyCopied, setWidgetKeyCopied] = useState(false)
 
   useEffect(() => {
     if (!token || operatorId === null) return
@@ -75,6 +86,32 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
     }
 
     void fetchOperator()
+  }, [token, operatorId])
+
+  useEffect(() => {
+    if (!token || operatorId === null) return
+    const fetchWidgetKey = async () => {
+      setWidgetKeyLoading(true)
+      setWidgetKeyError('')
+      try {
+        const response = await authFetch(
+          `${OPERATOR_URL_BASE}${operatorId}/widget-key`,
+          { method: 'GET', headers: { Authorization: `Bearer ${token}` } },
+        )
+        if (response.status === 404) {
+          setWidgetKey(null)
+          return
+        }
+        if (!response.ok) throw new Error('Failed to load widget key')
+        const data = (await response.json()) as WidgetKeyResponse
+        setWidgetKey(data.public_key ?? null)
+      } catch (err) {
+        setWidgetKeyError(err instanceof ForbiddenError ? err.message : 'Unable to load widget key.')
+      } finally {
+        setWidgetKeyLoading(false)
+      }
+    }
+    void fetchWidgetKey()
   }, [token, operatorId])
 
   const handleGenerateSecret = async () => {
@@ -117,6 +154,62 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
     setSecretDialogOpen(false)
     setGeneratedSecret('')
     setCopied(false)
+  }
+
+  const handleGenerateWidgetKey = async () => {
+    if (!token || operatorId === null) return
+    setWidgetKeyGenerating(true)
+    setWidgetKeyError('')
+    try {
+      const response = await authFetch(
+        `${OPERATOR_URL_BASE}${operatorId}/generate-widget-key`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (!response.ok) throw new Error('Failed to generate widget key')
+      const data = (await response.json()) as WidgetKeyResponse
+      setWidgetKey(data.public_key ?? null)
+      setWidgetKeyCopied(false)
+      showNotification('Widget key generated successfully!')
+    } catch (err) {
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to generate widget key. Please try again.'
+      setWidgetKeyError(msg)
+      showNotification(msg, 'error')
+    } finally {
+      setWidgetKeyGenerating(false)
+    }
+  }
+
+  const handleDeleteWidgetKey = async () => {
+    if (!token || operatorId === null) return
+    setWidgetKeyDeleting(true)
+    setWidgetKeyError('')
+    try {
+      const response = await authFetch(
+        `${OPERATOR_URL_BASE}${operatorId}/widget-key`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (!response.ok) throw new Error('Failed to delete widget key')
+      setWidgetKey(null)
+      setWidgetKeyCopied(false)
+      showNotification('Widget key deleted.')
+    } catch (err) {
+      const msg = err instanceof ForbiddenError ? err.message : 'Unable to delete widget key. Please try again.'
+      setWidgetKeyError(msg)
+      showNotification(msg, 'error')
+    } finally {
+      setWidgetKeyDeleting(false)
+    }
+  }
+
+  const handleCopyWidgetKey = async () => {
+    if (!widgetKey) return
+    try {
+      await navigator.clipboard.writeText(widgetKey)
+      setWidgetKeyCopied(true)
+      showNotification('Widget key copied to clipboard!')
+    } catch {
+      showNotification('Failed to copy to clipboard', 'error')
+    }
   }
 
   if (operatorId === null) {
@@ -235,6 +328,96 @@ function OperatorSection({ token, operatorId }: OperatorSectionProps) {
               {generateLoading ? 'Generating…' : 'Generate new webhook secret'}
             </Button>
           </Box>
+        </Stack>
+      </Box>
+
+      {/* ── Public Widget Key ── */}
+      <Box className="section-card">
+        <Stack spacing={2}>
+          <Box className="section-header">
+            <Box>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <VpnKeyRoundedIcon sx={{ fontSize: 22, color: '#0984E3' }} />
+                <h2>Public Widget Key</h2>
+              </Stack>
+              <Typography variant="body2" className="subtitle">
+                Identifies your operator in public-facing widget requests
+              </Typography>
+            </Box>
+          </Box>
+
+          <Typography variant="body2" color="text.secondary">
+            This key is embedded in your widget and sent with every request. Unlike the webhook
+            secret, it is not sensitive — it is safe to expose publicly.
+          </Typography>
+
+          {widgetKeyError && (
+            <Typography variant="body2" color="error">{widgetKeyError}</Typography>
+          )}
+
+          {widgetKeyLoading ? (
+            <Typography variant="body2" color="text.secondary">Loading widget key…</Typography>
+          ) : widgetKey ? (
+            <TextField
+              value={widgetKey}
+              variant="outlined"
+              size="small"
+              fullWidth
+              label="Public Widget Key"
+              InputProps={{
+                readOnly: true,
+                sx: { fontFamily: 'monospace', fontSize: '0.85rem', letterSpacing: 0.5 },
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title={widgetKeyCopied ? 'Copied!' : 'Copy to clipboard'} arrow>
+                      <IconButton
+                        onClick={handleCopyWidgetKey}
+                        edge="end"
+                        color={widgetKeyCopied ? 'success' : 'default'}
+                      >
+                        {widgetKeyCopied ? <CheckRoundedIcon /> : <ContentCopyRoundedIcon />}
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#f0f7ff' } }}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No widget key exists yet. Generate one below.
+            </Typography>
+          )}
+
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="contained"
+              startIcon={<RefreshRoundedIcon />}
+              onClick={handleGenerateWidgetKey}
+              disabled={widgetKeyGenerating || widgetKeyDeleting}
+              sx={{
+                borderRadius: 2,
+                py: 1.2,
+                fontWeight: 600,
+                bgcolor: '#0984E3',
+                '&:hover': { bgcolor: '#0773c7' },
+              }}
+            >
+              {widgetKeyGenerating ? 'Generating…' : widgetKey ? 'Regenerate widget key' : 'Generate widget key'}
+            </Button>
+            {widgetKey && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteOutlineRoundedIcon />}
+                onClick={handleDeleteWidgetKey}
+                disabled={widgetKeyDeleting || widgetKeyGenerating}
+                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
+              >
+                {widgetKeyDeleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            )}
+          </Stack>
         </Stack>
       </Box>
 

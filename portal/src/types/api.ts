@@ -199,6 +199,10 @@ export type WebhookSecretResponse = {
   webhook_secret: string
 }
 
+export type WidgetKeyResponse = {
+  public_key: string | null
+}
+
 export type AuditLogEntry = {
   request_id: string
   created_at: string
