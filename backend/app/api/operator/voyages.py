@@ -17,7 +17,7 @@ from app.models.choice_intent import ChoiceIntent
 from app.models.widget_config import WidgetConfig
 from app.models.route import Route
 from app.models.ship import Ship
-from app.schemas.voyage import VoyageCreate, VoyageUpdate, Voyage as VoyageSchema
+from app.schemas.voyage import VoyageCreate, VoyageUpdate, Voyage as VoyageSchema, VoyageEnsurePreview
 from app.schemas.voyage_creation_rule import VoyageEnsure
 
 router = APIRouter(
@@ -186,6 +186,84 @@ def ensure_voyage(
     db.commit()
     db.refresh(db_voyage)
     return db_voyage
+@router.post(
+    "/preview-ensure",
+    response_model=VoyageEnsurePreview,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_admin)],
+)
+def preview_ensure_voyage(
+    payload: VoyageEnsure,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Dry-run of /voyages/ensure — describes what would happen without writing to the DB.
+
+    Returns one of three outcomes:
+    - already_exists=True  — a voyage with this trip ID already exists for the operator.
+    - A preview with matched rule details and derived dates — a rule matched and a voyage
+      would be created with those parameters.
+    - HTTP 404 — no active rule matched the given external_trip_id.
+
+    Only accessible to admin users via JWT (not via webhook secret).
+    """
+    # 1. Idempotency check: if the voyage already exists, report that.
+    existing = (
+        db.query(Voyage)
+        .filter(
+            Voyage.operator_id == current_user.operator_id,
+            Voyage.external_trip_id == payload.external_trip_id,
+        )
+        .first()
+    )
+    if existing:
+        return VoyageEnsurePreview(
+            external_trip_id=payload.external_trip_id,
+            already_exists=True,
+            existing_voyage_id=existing.id,
+        )
+
+    # 2. Scan all active rules in insertion order — first match wins.
+    rules = (
+        db.query(VoyageCreationRule)
+        .filter(
+            VoyageCreationRule.operator_id == current_user.operator_id,
+            VoyageCreationRule.is_active == True,  # noqa: E712
+        )
+        .order_by(VoyageCreationRule.id.asc())
+        .all()
+    )
+
+    for rule in rules:
+        departure_date = extract_departure_date(rule.pattern, payload.external_trip_id)
+        if departure_date is not None:
+            # Fetch linked route and ship to populate the preview response.
+            route = db.query(Route).filter(Route.id == rule.route_id).first()
+            ship = db.query(Ship).filter(Ship.id == rule.ship_id).first()
+            arrival_date = departure_date + timedelta(days=route.duration_nights)
+            return VoyageEnsurePreview(
+                external_trip_id=payload.external_trip_id,
+                already_exists=False,
+                matched_rule_id=rule.id,
+                matched_rule_name=rule.name,
+                matched_rule_pattern=rule.pattern,
+                departure_date=departure_date,
+                arrival_date=arrival_date,
+                route_id=route.id,
+                route_name=route.name,
+                ship_id=ship.id if ship else None,
+                ship_name=ship.name if ship else None,
+                widget_config_id=rule.widget_config_id,
+            )
+
+    # 3. No rule matched.
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="No active voyage creation rule matched this external_trip_id",
+    )
+
+
 def _attach_intent_counts(db: Session, voyages: list[Voyage]) -> list[dict]:
     """Attach intent_count to each voyage."""
     voyage_ids = [v.id for v in voyages]

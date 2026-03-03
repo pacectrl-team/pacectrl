@@ -195,6 +195,10 @@ export type OperatorSummary = {
   created_at: string
 }
 
+export type WebhookSecretResponse = {
+  webhook_secret: string
+}
+
 export type AuditLogEntry = {
   request_id: string
   created_at: string
@@ -224,4 +228,24 @@ export type VoyageCreationRule = {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+/**
+ * Response from POST /voyages/preview-ensure — describes what would happen
+ * without actually creating anything in the database.
+ */
+export type VoyageEnsurePreview = {
+  external_trip_id: string
+  already_exists: boolean
+  existing_voyage_id: number | null
+  matched_rule_id: number | null
+  matched_rule_name: string | null
+  matched_rule_pattern: string | null
+  departure_date: string | null
+  arrival_date: string | null
+  route_id: number | null
+  route_name: string | null
+  ship_id: number | null
+  ship_name: string | null
+  widget_config_id: number | null
 }
