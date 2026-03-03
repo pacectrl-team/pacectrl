@@ -5,6 +5,11 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Stack,
   Switch,
   FormControlLabel,
@@ -17,6 +22,7 @@ import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { RouteSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
@@ -42,6 +48,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
   const [createIsActive, setCreateIsActive] = useState(true)
 
   const [selectedRoute, setSelectedRoute] = useState<RouteSummary | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDeparturePort, setEditDeparturePort] = useState('')
   const [editArrivalPort, setEditArrivalPort] = useState('')
@@ -158,6 +165,12 @@ function RoutesSection({ token }: RoutesSectionProps) {
     setEditArrivalTime(extractTimeForInput(route.arrival_time))
     setEditDurationNights(String(route.duration_nights ?? ''))
     setEditIsActive(route.is_active)
+    setDialogOpen(true)
+  }
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false)
+    setSelectedRoute(null)
   }
 
   const handleUpdateRoute = async () => {
@@ -209,6 +222,8 @@ function RoutesSection({ token }: RoutesSectionProps) {
         throw new Error('Failed to update route')
       }
 
+      setDialogOpen(false)
+      setSelectedRoute(null)
       await fetchRoutes()
       showNotification('Route updated successfully!')
     } catch (err) {
@@ -233,6 +248,7 @@ function RoutesSection({ token }: RoutesSectionProps) {
         throw new Error('Failed to delete route')
       }
 
+      setDialogOpen(false)
       setSelectedRoute(null)
       setEditName('')
       setEditDeparturePort('')
@@ -479,148 +495,170 @@ function RoutesSection({ token }: RoutesSectionProps) {
         )}
       </Box>
 
-      {/* ── Edit Route ── */}
-      {selectedRoute && (
-        <Box className="section-card">
-          <Box className="section-header">
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
-                <h2>Edit Route</h2>
+      {/* ── Edit Route Dialog ── */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        {selectedRoute && (
+          <>
+            <DialogTitle sx={{ pb: 0 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Edit Route
+                  </Typography>
+                </Stack>
+                <IconButton onClick={handleCloseDialog} size="small">
+                  <CloseRoundedIcon />
+                </IconButton>
               </Stack>
-              <Typography variant="body2" className="subtitle">
-                Editing <strong>{selectedRoute.name}</strong>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Editing <strong>{selectedRoute.name}</strong> (#{selectedRoute.id})
               </Typography>
-            </Box>
-          </Box>
+            </DialogTitle>
 
-          <Stack spacing={2}>
-            {/* Route identity */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <RouteRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    Route Identity
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                  <TextField
-                    label="Name"
-                    variant="outlined"
-                    size="small"
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    fullWidth
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={editIsActive}
-                        onChange={(event) => setEditIsActive(event.target.checked)}
-                        color="success"
+            <DialogContent sx={{ pt: 2 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {/* Route identity */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <RouteRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        Route Identity
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                      <TextField
+                        label="Name"
+                        variant="outlined"
+                        size="small"
+                        value={editName}
+                        onChange={(event) => setEditName(event.target.value)}
+                        fullWidth
                       />
-                    }
-                    label="Active"
-                    sx={{ minWidth: 100 }}
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={editIsActive}
+                            onChange={(event) => setEditIsActive(event.target.checked)}
+                            color="success"
+                          />
+                        }
+                        label="Active"
+                        sx={{ minWidth: 100 }}
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
 
-            {/* Ports */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <AnchorRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
-                    Ports
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Departure port"
-                    variant="outlined"
-                    size="small"
-                    value={editDeparturePort}
-                    onChange={(event) => setEditDeparturePort(event.target.value)}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Arrival port"
-                    variant="outlined"
-                    size="small"
-                    value={editArrivalPort}
-                    onChange={(event) => setEditArrivalPort(event.target.value)}
-                    fullWidth
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
+                {/* Ports */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f5f0ff' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <AnchorRoundedIcon sx={{ color: '#7b1fa2', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
+                        Ports
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="Departure port"
+                        variant="outlined"
+                        size="small"
+                        value={editDeparturePort}
+                        onChange={(event) => setEditDeparturePort(event.target.value)}
+                        fullWidth
+                      />
+                      <TextField
+                        label="Arrival port"
+                        variant="outlined"
+                        size="small"
+                        value={editArrivalPort}
+                        onChange={(event) => setEditArrivalPort(event.target.value)}
+                        fullWidth
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
 
-            {/* Schedule */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <ScheduleRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
-                    Schedule
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Departure time"
-                    type="time"
-                    size="small"
-                    value={editDepartureTime}
-                    onChange={(event) => setEditDepartureTime(event.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Arrival time"
-                    type="time"
-                    size="small"
-                    value={editArrivalTime}
-                    onChange={(event) => setEditArrivalTime(event.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Duration (nights)"
-                    type="number"
-                    size="small"
-                    value={editDurationNights}
-                    onChange={(event) => setEditDurationNights(event.target.value)}
-                    fullWidth
-                    inputProps={{ min: 0 }}
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
+                {/* Schedule */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#fff8e1' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <ScheduleRoundedIcon sx={{ color: '#f57c00', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                        Schedule
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="Departure time"
+                        type="time"
+                        size="small"
+                        value={editDepartureTime}
+                        onChange={(event) => setEditDepartureTime(event.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        label="Arrival time"
+                        type="time"
+                        size="small"
+                        value={editArrivalTime}
+                        onChange={(event) => setEditArrivalTime(event.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        label="Duration (nights)"
+                        type="number"
+                        size="small"
+                        value={editDurationNights}
+                        onChange={(event) => setEditDurationNights(event.target.value)}
+                        fullWidth
+                        inputProps={{ min: 0 }}
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </DialogContent>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleUpdateRoute}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, flex: 1 }}
-              >
-                Save changes
-              </Button>
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, justifyContent: 'space-between' }}>
               <Button
                 variant="outlined"
                 color="error"
                 onClick={handleDeleteRoute}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
+                sx={{ borderRadius: 2, fontWeight: 600 }}
               >
                 Delete route
               </Button>
-            </Stack>
-          </Stack>
-        </Box>
-      )}
-
+              <Stack direction="row" spacing={1}>
+                <Button
+                  onClick={handleCloseDialog}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleUpdateRoute}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Save changes
+                </Button>
+              </Stack>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Stack>
   )
 }

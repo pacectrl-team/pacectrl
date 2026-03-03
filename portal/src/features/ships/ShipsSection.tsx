@@ -5,6 +5,11 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Stack,
   TextField,
   Typography,
@@ -12,6 +17,7 @@ import {
 import DirectionsBoatRoundedIcon from '@mui/icons-material/DirectionsBoatRounded'
 import TagRoundedIcon from '@mui/icons-material/TagRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { ShipSummary } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
@@ -32,6 +38,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
   const [createImoNumber, setCreateImoNumber] = useState('')
 
   const [selectedShip, setSelectedShip] = useState<ShipSummary | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editImoNumber, setEditImoNumber] = useState('')
 
@@ -107,6 +114,12 @@ function ShipsSection({ token }: ShipsSectionProps) {
     setSelectedShip(ship)
     setEditName(ship.name)
     setEditImoNumber(ship.imo_number)
+    setDialogOpen(true)
+  }
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false)
+    setSelectedShip(null)
   }
 
   const handleUpdateShip = async () => {
@@ -137,6 +150,8 @@ function ShipsSection({ token }: ShipsSectionProps) {
         throw new Error('Failed to update ship')
       }
 
+      setDialogOpen(false)
+      setSelectedShip(null)
       await fetchShips()
       showNotification('Ship updated successfully!')
     } catch (err) {
@@ -161,6 +176,7 @@ function ShipsSection({ token }: ShipsSectionProps) {
         throw new Error('Failed to delete ship')
       }
 
+      setDialogOpen(false)
       setSelectedShip(null)
       setEditName('')
       setEditImoNumber('')
@@ -293,73 +309,96 @@ function ShipsSection({ token }: ShipsSectionProps) {
         )}
       </Box>
 
-      {/* ── Edit Ship ── */}
-      {selectedShip && (
-        <Box className="section-card">
-          <Box className="section-header">
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
-                <h2>Edit Ship</h2>
-              </Stack>
-              <Typography variant="body2" className="subtitle">
-                Editing <strong>{selectedShip.name}</strong>
-              </Typography>
-            </Box>
-          </Box>
-
-          <Stack spacing={2}>
-            {/* Vessel details */}
-            <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <DirectionsBoatRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                    Vessel Details
+      {/* ── Edit Ship Dialog ── */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        {selectedShip && (
+          <>
+            <DialogTitle sx={{ pb: 0 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <EditRoundedIcon sx={{ fontSize: 22, color: '#1976d2' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Edit Ship
                   </Typography>
                 </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Name"
-                    variant="outlined"
-                    size="small"
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    fullWidth
-                  />
-                  <TextField
-                    label="IMO number"
-                    variant="outlined"
-                    size="small"
-                    value={editImoNumber}
-                    onChange={(event) => setEditImoNumber(event.target.value)}
-                    fullWidth
-                  />
-                </Stack>
-              </CardContent>
-            </Card>
+                <IconButton onClick={handleCloseDialog} size="small">
+                  <CloseRoundedIcon />
+                </IconButton>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Editing <strong>{selectedShip.name}</strong> (#{selectedShip.id})
+              </Typography>
+            </DialogTitle>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleUpdateShip}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, flex: 1 }}
-              >
-                Save changes
-              </Button>
+            <DialogContent sx={{ pt: 2 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {/* Vessel details */}
+                <Card variant="outlined" sx={{ borderRadius: 3, bgcolor: '#f0f7ff' }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <DirectionsBoatRoundedIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        Vessel Details
+                      </Typography>
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField
+                        label="Name"
+                        variant="outlined"
+                        size="small"
+                        value={editName}
+                        onChange={(event) => setEditName(event.target.value)}
+                        fullWidth
+                      />
+                      <TextField
+                        label="IMO number"
+                        variant="outlined"
+                        size="small"
+                        value={editImoNumber}
+                        onChange={(event) => setEditImoNumber(event.target.value)}
+                        fullWidth
+                      />
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, justifyContent: 'space-between' }}>
               <Button
                 variant="outlined"
                 color="error"
                 onClick={handleDeleteShip}
-                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
+                sx={{ borderRadius: 2, fontWeight: 600 }}
               >
                 Delete ship
               </Button>
-            </Stack>
-          </Stack>
-        </Box>
-      )}
+              <Stack direction="row" spacing={1}>
+                <Button
+                  onClick={handleCloseDialog}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleUpdateShip}
+                  sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                  Save changes
+                </Button>
+              </Stack>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Stack>
   )
 }
