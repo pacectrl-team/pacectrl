@@ -33,3 +33,26 @@ def get_choice_intents_for_voyage(
     intents = db.query(ChoiceIntent).filter(ChoiceIntent.voyage_id == voyage_id).all()
 
     return intents
+
+
+@router.get("/{intent_id}", response_model=ChoiceIntentSchema)
+def get_choice_intent(
+    intent_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a single choice intent by its string ID, scoped to the current user's operator."""
+
+    intent = (
+        db.query(ChoiceIntent)
+        .join(Voyage, Voyage.id == ChoiceIntent.voyage_id)
+        .filter(
+            ChoiceIntent.intent_id == intent_id,
+            Voyage.operator_id == current_user.operator_id,
+        )
+        .first()
+    )
+    if not intent:
+        raise HTTPException(status_code=404, detail="Choice intent not found")
+
+    return intent

@@ -1,9 +1,9 @@
-from datetime import timedelta
+from datetime import timedelta, date
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from typing import List
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_operator_from_jwt_or_secret, require_admin
@@ -210,9 +210,40 @@ def _attach_intent_counts(db: Session, voyages: list[Voyage]) -> list[dict]:
 def list_voyages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    status_filter: Optional[str] = Query(
+        None,
+        alias="status",
+        pattern="^(planned|completed|cancelled)$",
+        description="Filter by voyage status",
+    ),
+    departure_date_from: Optional[date] = Query(
+        None,
+        description="Only return voyages departing on or after this date (YYYY-MM-DD)",
+    ),
+    departure_date_to: Optional[date] = Query(
+        None,
+        description="Only return voyages departing on or before this date (YYYY-MM-DD)",
+    ),
+    voyage_creation_rule_id: Optional[int] = Query(
+        None,
+        description="Filter voyages by the creation rule used to generate them",
+    ),
 ):
-    """List voyages for the current operator."""
-    voyages = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id).all()
+    """List voyages for the current operator, with optional filters."""
+    query = db.query(Voyage).filter(Voyage.operator_id == current_user.operator_id)
+
+    if status_filter is not None:
+        query = query.filter(Voyage.status == status_filter)
+    if departure_date_from is not None:
+        query = query.filter(Voyage.departure_date >= departure_date_from)
+    if departure_date_to is not None:
+        query = query.filter(Voyage.departure_date <= departure_date_to)
+    if voyage_creation_rule_id is not None:
+        # Filter to only voyages created by the specified rule.
+        # If the rule ID doesn't belong to this operator, the result is simply empty.
+        query = query.filter(Voyage.voyage_creation_rule_id == voyage_creation_rule_id)
+
+    voyages = query.order_by(Voyage.departure_date.asc()).all()
     return _attach_intent_counts(db, voyages)
 
 
@@ -301,7 +332,12 @@ def update_voyage(
         voyage_update.departure_date is not None or "route_id" in voyage_update.model_fields_set
     )
     if "arrival_date" in voyage_update.model_fields_set:
-        # Caller explicitly provided arrival_date — use it as the override.
+        # Caller explicitly provided arrival_date — validate it is not null before applying.
+        if voyage_update.arrival_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="arrival_date cannot be unset",
+            )
         db_voyage.arrival_date = voyage_update.arrival_date
     elif departure_or_route_changed:
         # Re-derive from the (potentially updated) route's duration_nights.

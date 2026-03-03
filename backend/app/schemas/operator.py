@@ -12,16 +12,22 @@ class OperatorBase(BaseModel):
     webhook_secret: Optional[str] = None
 
 
-class OperatorCreate(BaseModel):
-    """Payload for creating a new operator."""
-
-    name: str
-
-
 class Operator(OperatorBase):
-    """Response schema for operator resources."""
+    """Full operator schema (internal use only — includes webhook_secret)."""
 
     id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OperatorResponse(BaseModel):
+    """Public response schema for operator resources — excludes sensitive fields."""
+
+    id: int
+    name: str
+    public_key: Optional[str] = None
     created_at: datetime
 
     class Config:

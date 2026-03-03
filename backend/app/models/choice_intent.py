@@ -6,7 +6,7 @@ from app.core.database import Base
 class ChoiceIntent(Base):
     __tablename__ = "choice_intents"
 
-    intent_id = Column(String, primary_key=True)  #"int_AbC123", unique across all operators, a string because public ID --> hard to guess
+    intent_id = Column(String(20), primary_key=True)  #"int_AbC123", unique across all operators, a string because public ID --> hard to guess
     voyage_id = Column(Integer, ForeignKey("voyages.id", ondelete="CASCADE"), nullable=False)
 
     slider_value = Column(Numeric(4, 3), nullable=False)  # 0..1
@@ -24,4 +24,6 @@ class ChoiceIntent(Base):
     __table_args__ = (
         CheckConstraint("slider_value >= 0 AND slider_value <= 1", name="ck_intent_slider_range"),
         CheckConstraint("delta_pct_from_standard >= -100 AND delta_pct_from_standard <= 100", name="ck_intent_delta_pct_range"),
+        # Speed must be positive if set
+        CheckConstraint("selected_speed_kn IS NULL OR selected_speed_kn > 0", name="ck_intent_speed_positive"),
     )

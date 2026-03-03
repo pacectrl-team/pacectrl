@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class VoyageBase(BaseModel):
@@ -15,6 +15,17 @@ class VoyageBase(BaseModel):
     arrival_date: date
     status: str = Field("planned", pattern="^(planned|completed|cancelled)$")
     voyage_creation_rule_id: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_date_ordering(self) -> "VoyageBase":
+        """arrival_date must not be before departure_date when both are set."""
+        if self.departure_date and self.arrival_date:
+            if self.arrival_date < self.departure_date:
+                raise ValueError(
+                    f"arrival_date ({self.arrival_date}) must be "
+                    f">= departure_date ({self.departure_date})"
+                )
+        return self
 
 
 class VoyageCreate(VoyageBase):

@@ -16,6 +16,7 @@ class WidgetConfig(Base):
     config = Column(JSON, nullable=False) # JSON blob storing widget settings
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("operator_id", "name", name="uq_operator_widget_config_name"),

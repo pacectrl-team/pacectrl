@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SpeedEstimateAnchor(BaseModel):
@@ -29,6 +29,40 @@ class SpeedEstimateAnchorsUpsert(BaseModel):
     slow: SpeedEstimateAnchor
     standard: SpeedEstimateAnchor
     fast: SpeedEstimateAnchor
+
+    @model_validator(mode="after")
+    def validate_profile_ordering(self) -> "SpeedEstimateAnchorsUpsert":
+        """
+        Enforce physical ordering across profiles:
+          speed:  slow  <=  standard  <=  fast
+          delta:  slow  >=  0  (arrives later than schedule)
+                  fast  <=  0  (arrives earlier than schedule)
+        """
+        # --- speed ordering ---
+        if self.slow.speed_knots > self.standard.speed_knots:
+            raise ValueError(
+                f"slow speed ({self.slow.speed_knots} kn) must be "
+                f"<= standard speed ({self.standard.speed_knots} kn)"
+            )
+        if self.standard.speed_knots > self.fast.speed_knots:
+            raise ValueError(
+                f"standard speed ({self.standard.speed_knots} kn) must be "
+                f"<= fast speed ({self.fast.speed_knots} kn)"
+            )
+
+        # --- arrival delta sign constraints ---
+        if self.slow.expected_arrival_delta_minutes < 0:
+            raise ValueError(
+                f"slow profile arrival delta ({self.slow.expected_arrival_delta_minutes} min) "
+                "must be >= 0 (slow voyages arrive later than or on schedule)"
+            )
+        if self.fast.expected_arrival_delta_minutes > 0:
+            raise ValueError(
+                f"fast profile arrival delta ({self.fast.expected_arrival_delta_minutes} min) "
+                "must be <= 0 (fast voyages arrive earlier than or on schedule)"
+            )
+
+        return self
 
 
 class SpeedEstimateAnchorsResponse(BaseModel):
