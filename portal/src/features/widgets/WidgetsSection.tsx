@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Accordion,
   AccordionDetails,
@@ -31,6 +31,7 @@ import AddIcon from '@mui/icons-material/AddRounded'
 import type { WidgetConfig, WidgetConfigCreate, WidgetTheme } from '../../types/api'
 import { authFetch, ForbiddenError } from '../../utils/authFetch'
 import { useNotification } from '../../context/NotificationContext'
+import { useReferenceData } from '../../context/ReferenceDataContext'
 
 type WidgetsSectionProps = {
   token: string
@@ -376,8 +377,9 @@ const fieldInputSx = {
 
 function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
   const { showNotification } = useNotification()
-  const [configs, setConfigs] = useState<WidgetConfig[]>([])
-  const [loading, setLoading] = useState(false)
+  // Widget configs list and loading state come from shared context (fetched once per session).
+  // `fetchConfigs` is aliased so mutation handlers can call it unchanged after a save.
+  const { widgetConfigs: configs, loading, refreshWidgetConfigs: fetchConfigs } = useReferenceData()
   const [error, setError] = useState('')
 
   /* Editor state */
@@ -401,29 +403,9 @@ function WidgetsSection({ token, operatorId }: WidgetsSectionProps) {
   }
 
   /* ── Data fetching ─────────────────────────────── */
-
-  const fetchConfigs = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    setError('')
-    try {
-      const response = await authFetch(WIDGET_CONFIGS_URL, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!response.ok) throw new Error('Failed to load widget configs')
-      const data = (await response.json()) as WidgetConfig[]
-      setConfigs(data)
-    } catch (err) {
-      setError(err instanceof ForbiddenError ? err.message : 'Unable to load widget configs.')
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    void fetchConfigs()
-  }, [fetchConfigs])
+  // fetchConfigs is supplied by ReferenceDataContext (see above).
+  // After mutations (create / update / delete), call fetchConfigs() to
+  // re-fetch and keep the shared cache current.
 
   /* ── Selection handling ────────────────────────── */
 

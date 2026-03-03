@@ -22,6 +22,7 @@ import OperatorSection from '../features/operators/OperatorSection'
 import ApiLogsSection from '../features/apiLogs/ApiLogsSection'
 import VoyageRulesSection from '../features/voyageRules/VoyageRulesSection'
 import { authFetch } from '../utils/authFetch'
+import { ReferenceDataProvider } from '../context/ReferenceDataContext'
 
 const ME_URL = 'https://pacectrl-production.up.railway.app/api/v1/operator/auth/me'
 
@@ -169,6 +170,10 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
 
         {/* Content */}
         <Box className="dashboard-content">
+          {/* ReferenceDataProvider loads ships, routes, widget configs, and speed
+              estimates once per session and shares them with all sections,
+              avoiding repeated parallel fetches when switching views. */}
+          <ReferenceDataProvider token={token}>
           <Stack spacing={3}>
             {activeSection === 'overview' && (
               <OverviewSection token={token} onNavigate={handleSectionChange} />
@@ -206,6 +211,7 @@ function DashboardPage({ token, operatorId, onLogout }: DashboardPageProps) {
               <ApiLogsSection token={token} />
             )}
           </Stack>
+          </ReferenceDataProvider>
 
           {/* Footer */}
           <Box
