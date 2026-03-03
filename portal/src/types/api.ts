@@ -195,6 +195,10 @@ export type OperatorSummary = {
   created_at: string
 }
 
+export type WebhookSecretResponse = {
+  secret: string
+}
+
 export type AuditLogEntry = {
   request_id: string
   created_at: string
