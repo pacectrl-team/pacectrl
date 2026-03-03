@@ -60,3 +60,31 @@ class Voyage(VoyageBase):
     class Config:
         from_attributes = True  # Pydantic V2 for ORM compatibility
 
+
+class VoyageEnsurePreview(BaseModel):
+    """
+    Response schema for the POST /voyages/preview-ensure dry-run endpoint.
+
+    Describes what *would* happen if /voyages/ensure were called with the
+    same external_trip_id — without writing anything to the database.
+    """
+    external_trip_id: str
+
+    # True when a voyage already exists for this (operator, external_trip_id) pair.
+    already_exists: bool
+
+    # Populated only when already_exists=True.
+    existing_voyage_id: Optional[int] = None
+
+    # Populated when a matching rule was found and already_exists=False.
+    matched_rule_id: Optional[int] = None
+    matched_rule_name: Optional[str] = None
+    matched_rule_pattern: Optional[str] = None
+    departure_date: Optional[date] = None
+    arrival_date: Optional[date] = None
+    route_id: Optional[int] = None
+    route_name: Optional[str] = None
+    ship_id: Optional[int] = None
+    ship_name: Optional[str] = None
+    widget_config_id: Optional[int] = None
+
